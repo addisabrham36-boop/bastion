@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+venv/
+.venv/
+.pytest_cache/
+*.egg-info/
+
+
+# Runtime data — never commit a live database or logs
+database/*.db
+logs/*.log
+
+# Local overrides — commit config.json as a template, not a working copy
+# with real upstream IPs/domains in it once this project has real targets
+config/config.local.json
