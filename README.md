@@ -48,18 +48,24 @@ bastion/
 
 ## Setup & Running
 
+### ⚡ Global Command (Recommended)
+You can run the entire system from **any directory** or terminal window with a single command:
 ```bash
-# 1. Activate environment and install dependencies
-source venv/bin/activate
-pip install -r requirements.txt
-
-# 2. Run test suite (61 tests)
-pytest -v
-
-# 3. Start WAF Proxy (Listens on port 8080 or 8000)
-uvicorn bastion.core.proxy:app --host 127.0.0.1 --port 8080 --reload
-
-# 4. Start Management API & Dashboard UI (Listens on port 8000)
-uvicorn api.server:app --host 127.0.0.1 --port 8000 --reload
+bastion
 ```
+*(or `./start.sh` from the repository directory)*
+
+This automatically:
+- Resolves port conflicts and cleans stale connections
+- Launches the **Vulnerable Banking App** (`http://127.0.0.1:5000`)
+- Launches the **Bastion WAF Reverse Proxy** (`http://127.0.0.1:8080`)
+- Launches the **WAF Security Dashboard** (`http://127.0.0.1:8000`)
+- Gracefully handles `Ctrl+C` to terminate all services together
+
+### 🧪 Run Automated Tests
+```bash
+venv/bin/pytest -v
+```
+*(68 comprehensive test cases across all attack vectors and false-positive checks).*
+
 
