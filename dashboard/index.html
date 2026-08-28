@@ -703,7 +703,7 @@
                     <span style="font-size: 0.8rem; color: var(--text-gray);">
                         <i class="fa-solid fa-clock"></i> Uptime: <strong id="top-uptime" style="color: #ffffff;">Live</strong>
                     </span>
-                    <button class="btn-ghost" style="padding: 6px 12px; font-size: 0.78rem;" onclick="activateTab('config-guide', document.querySelectorAll('.nav-btn')[3])">
+                    <button class="btn-action" style="padding: 8px 16px; font-size: 0.78rem;" onclick="showModal('addSiteModal')">
                         <i class="fa-solid fa-plus-circle"></i> Protect a New Website
                     </button>
                 </div>
@@ -900,6 +900,12 @@
                         </p>
                     </div>
 
+                    <div style="margin-top: 16px;">
+                        <button class="btn-action" onclick="showModal('addSiteModal')" style="padding: 10px 20px; font-size: 0.88rem;">
+                            <i class="fa-solid fa-plus-circle"></i> Add a Website Now
+                        </button>
+                    </div>
+
                     <div class="guide-box">
                         <div class="guide-step">
                             <div class="step-badge">1</div>
@@ -916,7 +922,7 @@
                             <div>
                                 <h3 style="font-size: 1rem; margin: 0 0 6px 0;">Add Domain & Upstream Address</h3>
                                 <p style="font-size: 0.85rem; color: var(--text-gray); margin: 0;">
-                                    Navigate to <strong>Protected Domains</strong> and click <strong>"Add New Upstream Target"</strong>. Enter your domain (e.g. <code>mywebsite.com</code> or <code>127.0.0.1:8080</code>) and the address of your backend web server (e.g. <code>http://192.168.1.50:8000</code> or <code>http://127.0.0.1:3000</code>).
+                                    Click <strong>"Add a Website Now"</strong> above or go to <strong>Protected Domains</strong> tab and click <strong>"Add New Upstream Target"</strong>. Enter your domain (e.g. <code>mywebsite.com</code>) and the address of your backend web server (e.g. <code>http://192.168.1.50:8000</code> or <code>http://127.0.0.1:3000</code>).
                                 </p>
                             </div>
                         </div>
@@ -926,7 +932,7 @@
                             <div>
                                 <h3 style="font-size: 1rem; margin: 0 0 6px 0;">Point Traffic to Bastion WAF (Port 8080)</h3>
                                 <p style="font-size: 0.85rem; color: var(--text-gray); margin: 0;">
-                                    Direct incoming client requests to the Bastion WAF reverse proxy on <strong>Port 8080</strong> (via DNS A-record, load balancer, or port forwarding). Bastion inspects all requests in 0.3ms and transparently forwards clean traffic to your upstream server.
+                                    Direct incoming client requests to the Bastion WAF reverse proxy on <strong>Port 8080</strong> (via DNS A-record, load balancer, or port forwarding). Bastion inspects all requests in sub-milliseconds and transparently forwards clean traffic to your upstream server.
                                 </p>
                             </div>
                         </div>
@@ -938,6 +944,148 @@
                                 <p style="font-size: 0.85rem; color: var(--text-gray); margin: 0;">
                                     View live intercepts in the <strong>Overview</strong> and <strong>Security Audit Logs</strong> tabs. Toggle any of the 100+ rules on or off dynamically without restarting the server.
                                 </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Self-Hosting Deployment Guide -->
+                    <div style="margin-top: 30px; border-top: 1px solid var(--border-dark); padding-top: 24px;">
+                        <h2 style="margin: 0; font-size: 1.3rem;"><i class="fa-solid fa-server" style="margin-right: 8px;"></i>Self-Hosting Deployment Guide</h2>
+                        <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-gray);">
+                            How to deploy Bastion WAF on your own VPS, cloud server, or bare-metal machine.
+                        </p>
+                    </div>
+
+                    <div class="guide-box">
+                        <div class="guide-step">
+                            <div class="step-badge">A</div>
+                            <div>
+                                <h3 style="font-size: 1rem; margin: 0 0 6px 0;">Prerequisites</h3>
+                                <p style="font-size: 0.85rem; color: var(--text-gray); margin: 0;">
+                                    A Linux server (Ubuntu 20.04+, Debian 11+, CentOS 8+, or similar) with <strong>Python 3.10+</strong> and <strong>pip</strong> installed. Minimum 512 MB RAM, 1 vCPU.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="guide-step">
+                            <div class="step-badge">B</div>
+                            <div>
+                                <h3 style="font-size: 1rem; margin: 0 0 6px 0;">Install Bastion WAF</h3>
+                                <pre style="background: #141414; border: 1px solid #333; border-radius: 6px; padding: 12px; margin: 8px 0 0 0; font-size: 0.82rem; color: #ffffff; overflow-x: auto; white-space: pre-wrap;">
+# Clone the repository
+git clone https://github.com/addisabrham36-boop/bastion.git
+cd bastion
+
+# Create virtual environment and install dependencies
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Install as CLI command
+pip install -e .</pre>
+                            </div>
+                        </div>
+
+                        <div class="guide-step">
+                            <div class="step-badge">C</div>
+                            <div>
+                                <h3 style="font-size: 1rem; margin: 0 0 6px 0;">Run Bastion (Quick Start)</h3>
+                                <pre style="background: #141414; border: 1px solid #333; border-radius: 6px; padding: 12px; margin: 8px 0 0 0; font-size: 0.82rem; color: #ffffff; overflow-x: auto; white-space: pre-wrap;">
+# Start with default settings
+bastion
+
+# Or specify a custom upstream target
+bastion --upstream http://127.0.0.1:3000
+
+# Bind to all interfaces (for remote access)
+bastion --host 0.0.0.0</pre>
+                            </div>
+                        </div>
+
+                        <div class="guide-step">
+                            <div class="step-badge">D</div>
+                            <div>
+                                <h3 style="font-size: 1rem; margin: 0 0 6px 0;">Run as a Systemd Service (Production)</h3>
+                                <p style="font-size: 0.85rem; color: var(--text-gray); margin: 0 0 8px 0;">
+                                    Create a systemd service so Bastion starts on boot and auto-restarts on failure:
+                                </p>
+                                <pre style="background: #141414; border: 1px solid #333; border-radius: 6px; padding: 12px; margin: 0; font-size: 0.82rem; color: #ffffff; overflow-x: auto; white-space: pre-wrap;">
+# Create the service file
+sudo nano /etc/systemd/system/bastion-waf.service
+
+# Paste the following:
+[Unit]
+Description=Bastion WAF - Web Application Firewall
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/bastion
+ExecStart=/opt/bastion/venv/bin/bastion --host 0.0.0.0
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
+# Enable and start:
+sudo systemctl daemon-reload
+sudo systemctl enable bastion-waf
+sudo systemctl start bastion-waf
+sudo systemctl status bastion-waf</pre>
+                            </div>
+                        </div>
+
+                        <div class="guide-step">
+                            <div class="step-badge">E</div>
+                            <div>
+                                <h3 style="font-size: 1rem; margin: 0 0 6px 0;">Nginx Reverse Proxy + SSL (Optional)</h3>
+                                <p style="font-size: 0.85rem; color: var(--text-gray); margin: 0 0 8px 0;">
+                                    Put Nginx in front for SSL termination (HTTPS). Certbot provides free certificates:
+                                </p>
+                                <pre style="background: #141414; border: 1px solid #333; border-radius: 6px; padding: 12px; margin: 0; font-size: 0.82rem; color: #ffffff; overflow-x: auto; white-space: pre-wrap;">
+# Install Nginx and Certbot
+sudo apt install nginx certbot python3-certbot-nginx
+
+# Nginx config (/etc/nginx/sites-available/bastion)
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    # Dashboard
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # WAF Proxy
+    location /waf/ {
+        proxy_pass http://127.0.0.1:8080/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+
+# Enable site and get SSL certificate
+sudo ln -s /etc/nginx/sites-available/bastion /etc/nginx/sites-enabled/
+sudo certbot --nginx -d your-domain.com
+sudo systemctl restart nginx</pre>
+                            </div>
+                        </div>
+
+                        <div class="guide-step">
+                            <div class="step-badge">F</div>
+                            <div>
+                                <h3 style="font-size: 1rem; margin: 0 0 6px 0;">Firewall Configuration</h3>
+                                <pre style="background: #141414; border: 1px solid #333; border-radius: 6px; padding: 12px; margin: 8px 0 0 0; font-size: 0.82rem; color: #ffffff; overflow-x: auto; white-space: pre-wrap;">
+# Allow HTTP/HTTPS and Bastion ports
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw allow 8000/tcp   # Dashboard
+sudo ufw allow 8080/tcp   # WAF Proxy
+sudo ufw enable</pre>
                             </div>
                         </div>
                     </div>
