@@ -156,5 +156,22 @@ def system_metrics():
 
 
 dashboard_dir = Path(__file__).resolve().parent.parent / "dashboard"
+index_html_path = dashboard_dir / "index.html"
+
+
+@app.get("/")
+def serve_dashboard():
+    if index_html_path.exists():
+        with open(index_html_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return Response(
+            content=content,
+            media_type="text/html",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"},
+        )
+    return Response(content="Dashboard file not found.", status_code=404)
+
+
 if dashboard_dir.exists():
-    app.mount("/", StaticFiles(directory=str(dashboard_dir), html=True), name="dashboard")
+    app.mount("/static", StaticFiles(directory=str(dashboard_dir)), name="static")
+
