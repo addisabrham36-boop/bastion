@@ -14,9 +14,10 @@ from .engine import Engine
 from .inspector import inspect_request
 from database.db import get_enabled_rule_ids, get_sites, init_db, log_event
 
-logger = logging.getLogger(__name__)
+import os
 
-DEFAULT_UPSTREAM = "http://127.0.0.1:5000"
+DEFAULT_UPSTREAM = os.environ.get("BASTION_UPSTREAM", "http://127.0.0.1:5000")
+
 
 HOP_BY_HOP_HEADERS = {
     "host",
