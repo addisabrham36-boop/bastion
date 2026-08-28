@@ -1,13 +1,9 @@
-#!/usr/bin/env bash
-set -e
+#!/bin/bash
+# Move to script directory
+cd "$(dirname "$0")"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+# Export package path so relative imports work inside workers
+export PYTHONPATH="$PWD/bastion:$PYTHONPATH"
 
-if [ -d "venv" ]; then
-    source venv/bin/activate
-elif [ -d ".venv" ]; then
-    source .venv/bin/activate
-fi
-
-python3 main.py "$@"
+# Execute uvicorn directly from virtual environment
+./.venv/bin/uvicorn core.proxy:app --app-dir bastion --host 127.0.0.1 --port 8000 --reload

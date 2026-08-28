@@ -1,11 +1,5 @@
 """
-Detection engine — discovers every Rule subclass under bastion/rules/,
-runs each against a NormalizedRequest, and returns the first blocking
-Verdict (or a clean verdict if none match).
-
-Auto-discovery via pkgutil/inspect means adding rules/new_rule.py with a
-Rule subclass is enough to activate it — nothing here needs editing, which
-is the whole point of the Rule interface in base.py.
+Detection engine — discovers rules under bastion/rules/ and evaluates requests.
 """
 
 import importlib
@@ -24,10 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def discover_rules() -> List[Rule]:
-    """
-    Import every module in bastion/rules/ (except base.py) and instantiate
-    every Rule subclass defined directly in that module.
-    """
+    """Import every rule class defined in bastion/rules/."""
     instances: List[Rule] = []
     for _, module_name, _ in pkgutil.iter_modules(rules_package.__path__):
         if module_name == "base":
@@ -46,9 +37,11 @@ class Engine:
         blocklist_path: Optional[str] = None,
     ):
         self.rules: List[Rule] = rules if rules is not None else discover_rules()
-        self.blocklist_path = blocklist_path or os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config", "blocklist.json"
-        )
+        if blocklist_path:
+            self.blocklist_path = blocklist_path
+        else:
+            base_dir = Path(__file__).resolve().parent.parent.parent
+            self.blocklist_path = str(base_dir / "config" / "blocklist.json")
 
     def _check_blocklist(self, request) -> Optional[Verdict]:
         """Check if client IP or User-Agent is explicitly blocklisted."""
@@ -93,9 +86,7 @@ class Engine:
             try:
                 verdict = rule.match(request)
             except NotImplementedError:
-                logger.debug("Skipping unimplemented rule: %s", rule.RULE_ID)
                 continue
             if verdict.blocked:
                 return verdict
         return Verdict.clean("CLEAN")
-

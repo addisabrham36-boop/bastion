@@ -1,7 +1,11 @@
+"""
+High-Performance WAF Reverse Proxy with dynamic upstream routing,
+live telemetry logging, and defense bypass support.
+"""
+
 from contextlib import asynccontextmanager
 import logging
-from typing import Optional
-
+from typing import Optional, Tuple
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
@@ -12,7 +16,6 @@ from database.db import get_enabled_rule_ids, get_sites, init_db, log_event
 
 logger = logging.getLogger(__name__)
 
-# Default Fallback Upstream
 DEFAULT_UPSTREAM = "http://127.0.0.1:5000"
 
 HOP_BY_HOP_HEADERS = {
@@ -41,16 +44,19 @@ app = FastAPI(title="Bastion WAF Reverse Proxy", lifespan=lifespan)
 engine = Engine()
 
 
-def get_upstream_target(host: str) -> str:
-    """Resolve upstream target based on protected sites configuration."""
+def resolve_upstream_and_mode(host: str) -> Tuple[str, bool]:
+    """Resolve upstream target and defense mode for the given host."""
     try:
         sites = get_sites()
         for site in sites:
-            if site["domain"].lower() in host.lower() or host.lower() in site["domain"].lower():
-                return site["upstream"] if site["upstream"].startswith("http") else f"http://{site['upstream']}"
+            domain = site["domain"].lower()
+            current_host = host.lower()
+            if domain in current_host or current_host in domain:
+                target = site["upstream"] if site["upstream"].startswith("http") else f"http://{site['upstream']}"
+                return target, bool(site.get("defense_mode", True))
     except Exception:
         pass
-    return DEFAULT_UPSTREAM
+    return DEFAULT_UPSTREAM, True
 
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"])
@@ -59,12 +65,12 @@ async def waf_proxy(request: Request, path: str):
     query_string = request.url.query
     headers = dict(request.headers)
     client_ip = request.client.host if request.client else "127.0.0.1"
-    host_header = request.headers.get("host", "127.0.0.1:8000")
+    host_header = request.headers.get("host", "127.0.0.1:8080")
 
-    # Normalize request path for inspection
     target_path = "/" + path if not path.startswith("/") else path
+    upstream_target, defense_active = resolve_upstream_and_mode(host_header)
 
-    # Inspect request against WAF rules
+    # 1. Inspect request against WAF rules
     inspection = inspect_request(
         method=request.method,
         path=target_path,
@@ -74,7 +80,6 @@ async def waf_proxy(request: Request, path: str):
         client_ip=client_ip,
     )
 
-    # Evaluate against active rules
     try:
         enabled_rules = get_enabled_rule_ids()
     except Exception:
@@ -82,36 +87,49 @@ async def waf_proxy(request: Request, path: str):
 
     verdict = engine.evaluate(inspection.request, enabled_rule_ids=enabled_rules)
 
-    # Log event to waf.db
+    # Determine snippet of payload for audit log inspection
+    payload_sample = ""
+    if query_string:
+        payload_sample += f"Query: {query_string}\n"
+    if body:
+        try:
+            payload_sample += f"Body: {body.decode('utf-8', errors='replace')[:500]}\n"
+        except Exception:
+            pass
+    if "user-agent" in headers:
+        payload_sample += f"User-Agent: {headers['user-agent']}\n"
+
+    # If defense mode is disabled for this site (Bypass Mode), do not block
+    is_blocked = verdict.blocked and defense_active
+
+    # Log event to database
     log_event(
         client_ip=client_ip,
         method=request.method,
         path=target_path,
-        blocked=verdict.blocked,
+        blocked=is_blocked,
         rule_id=verdict.rule_id if verdict.blocked else "",
-        reason=verdict.reason if verdict.blocked else "",
-        action="403 Blocked" if verdict.blocked else "200 Allowed",
+        reason=verdict.reason if verdict.blocked else ("Clean Request" if defense_active else "Bypass Mode Allowed"),
+        action="403 Blocked" if is_blocked else ("200 Allowed" if defense_active else "Bypassed Allowed"),
+        payload_snippet=payload_sample[:500],
     )
 
-    # Intercept attack vector (403 Forbidden)
-    if verdict.blocked:
+    # Intercept attack vector if blocking is active
+    if is_blocked:
         return Response(
-            content=f'{{"blocked": true, "rule": "{verdict.rule_id}", "reason": "{verdict.reason}"}}',
+            content=f'{{"blocked": true, "rule": "{verdict.rule_id}", "reason": "{verdict.reason}", "status": 403}}',
             status_code=403,
             media_type="application/json",
         )
 
     # Prepare forwarding headers
-    forward_headers = {
-        k: v for k, v in headers.items() if k.lower() not in HOP_BY_HOP_HEADERS
-    }
+    forward_headers = {k: v for k, v in headers.items() if k.lower() not in HOP_BY_HOP_HEADERS}
     forward_headers["x-forwarded-for"] = client_ip
     forward_headers["x-forwarded-proto"] = request.url.scheme
     forward_headers["x-forwarded-host"] = host_header
 
-    # Resolve upstream
-    upstream = get_upstream_target(host_header)
-    upstream_url = f"{upstream.rstrip('/')}/{path.lstrip('/')}" if path else f"{upstream.rstrip('/')}/"
+    # Build upstream target URL
+    upstream_url = f"{upstream_target.rstrip('/')}/{path.lstrip('/')}" if path else f"{upstream_target.rstrip('/')}/"
     if query_string:
         upstream_url += f"?{query_string}"
 
@@ -131,13 +149,13 @@ async def waf_proxy(request: Request, path: str):
         )
     except httpx.ConnectError:
         return Response(
-            content='{"error": "502 Bad Gateway", "message": "Upstream target is unreachable."}',
+            content='{"error": "502 Bad Gateway", "message": "Upstream target server is unreachable."}',
             status_code=502,
             media_type="application/json",
         )
     except httpx.TimeoutException:
         return Response(
-            content='{"error": "504 Gateway Timeout", "message": "Upstream target timed out."}',
+            content='{"error": "504 Gateway Timeout", "message": "Upstream target server timed out."}',
             status_code=504,
             media_type="application/json",
         )

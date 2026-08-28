@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Runtime data (never bake database or logs into image)
+database/*.db
+database/*.db-shm
+database/*.db-wal
+logs/*.log
+logs/*.gz
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# Development tools
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+
+# Local config overrides
+config/config.local.json
+
+# Archives
+*.tar.gz
+*.zip
+
+# Secrets / credentials (never commit these)
+.env
+*.pem
+*.key
+*.crt
+secrets/

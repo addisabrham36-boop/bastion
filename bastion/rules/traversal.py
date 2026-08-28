@@ -1,6 +1,9 @@
+"""
+Path Traversal and LFI detection rule (OWASP CRS 930120).
+"""
+
 import re
 from typing import List, Tuple
-
 from .base import Rule, Verdict
 
 _TRAVERSAL_PATTERNS: List[Tuple[str, str]] = [
@@ -33,4 +36,3 @@ class TraversalRule(Rule):
                         meta={"field": field_label, "matched_value": value[:200]},
                     )
         return Verdict.clean(self.RULE_ID)
-

@@ -1,0 +1,92 @@
+version: "3.9"
+
+services:
+
+  # ── Vulnerable Banking Target Application ──────────────────────────────────
+  vulnerable-target:
+    image: python:3.13-slim
+    container_name: bastion-target
+    working_dir: /app
+    volumes:
+      - /home/abrham/vulnerable-target:/app
+    command: >
+      sh -c "pip install flask --quiet && python app.py"
+    environment:
+      - FLASK_ENV=development
+    networks:
+      - bastion-net
+    # NOT exposed externally — only accessible via WAF proxy
+    expose:
+      - "5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── Bastion WAF Reverse Proxy ───────────────────────────────────────────────
+  bastion-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: bastion-waf:latest
+    container_name: bastion-proxy
+    command: >
+      sh -c "python -m uvicorn bastion.core.proxy:app --host 0.0.0.0 --port 8080 --workers 2"
+    environment:
+      - PYTHONPATH=/app
+      - BASTION_UPSTREAM=http://vulnerable-target:5000
+    volumes:
+      - bastion-db:/app/database
+    ports:
+      - "8080:8080"
+    depends_on:
+      vulnerable-target:
+        condition: service_healthy
+    networks:
+      - bastion-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── Bastion WAF Management Dashboard & API ─────────────────────────────────
+  bastion-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: bastion-waf:latest
+    container_name: bastion-dashboard
+    command: >
+      sh -c "python -m uvicorn api.server:app --host 0.0.0.0 --port 8000 --workers 2"
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - bastion-db:/app/database
+    ports:
+      - "8000:8000"
+    depends_on:
+      - bastion-proxy
+    networks:
+      - bastion-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/stats')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  bastion-db:
+    driver: local
+
+networks:
+  bastion-net:
+    driver: bridge

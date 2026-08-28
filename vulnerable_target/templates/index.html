@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Apex Global Bank - Client Portal & Security Test Suite{% endblock %}
+
+{% block content %}
+<!-- Account Balances Summary -->
+<div class="grid">
+    <div class="card">
+        <h3><i class="fa-solid fa-wallet text-blue"></i> Primary Business Checking</h3>
+        <div class="account-no">Account: **** **** 4892</div>
+        <div class="balance">$142,580.40</div>
+        <span style="color: var(--green); font-size: 0.85rem; font-weight: 600;"><i class="fa-solid fa-arrow-up"></i> +2.4% yield this month</span>
+    </div>
+    <div class="card">
+        <h3><i class="fa-solid fa-piggy-bank text-green"></i> Reserve High-Yield Savings</h3>
+        <div class="account-no">Account: **** **** 9104</div>
+        <div class="balance">$520,100.00</div>
+        <span style="color: var(--green); font-size: 0.85rem; font-weight: 600;">4.85% APY Active</span>
+    </div>
+    <div class="card">
+        <h3><i class="fa-solid fa-chart-pie text-blue"></i> Global Investment Vault</h3>
+        <div class="account-no">Portfolio: Apex-Equities-Alpha</div>
+        <div class="balance">$350,000.00</div>
+        <span style="color: var(--muted); font-size: 0.85rem;">Managed Portfolio</span>
+    </div>
+</div>
+
+<!-- Active Security Mode Banner -->
+<div style="background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 10px; padding: 14px 20px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <strong style="color: #0369a1;"><i class="fa-solid fa-flask-vial"></i> Interactive Vulnerability Testing Environment</strong>
+        <p style="font-size: 0.85rem; color: #0284c7; margin-top: 2px;">Submit payloads through Port 8080 to test Bastion WAF interception, or manage vulnerability modes in Staff Center.</p>
+    </div>
+    <a href="/staff" class="btn" style="font-size: 0.85rem; padding: 6px 12px;"><i class="fa-solid fa-sliders"></i> Security Toggles</a>
+</div>
+
+<!-- Dynamic Output Box -->
+{% if output_title %}
+<div class="card" style="margin-bottom: 25px; border-left: 4px solid var(--accent);">
+    <h3><i class="fa-solid fa-terminal"></i> {{ output_title }}</h3>
+    {% if is_safe_rendered %}
+        <div class="output-box" style="background: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1;">{{ output_content | safe }}</div>
+    {% else %}
+        <div class="output-box">{{ output_content }}</div>
+    {% endif %}
+    <div style="margin-top: 12px;"><a href="/" style="color: var(--accent); text-decoration: none; font-weight: 600;">&larr; Clear Output</a></div>
+</div>
+{% endif %}
+
+<!-- 8 Vulnerability Testing Cards Grid -->
+<h2 style="font-size: 1.25rem; margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 8px;">
+    <i class="fa-solid fa-shield-virus text-blue"></i> Interactive Attack Simulation Modules
+</h2>
+
+<div class="grid">
+    <!-- 1. SQL Injection (SQLi) -->
+    <div class="card">
+        <h3><i class="fa-solid fa-magnifying-glass text-blue"></i> 1. Transaction Search (SQLi)</h3>
+        <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 8px;">Query account ledger records by transaction query.</p>
+        <form action="/search" method="GET">
+            <input type="text" name="q" placeholder="e.g. admin' OR '1'='1 or ACME" value="{{ request.args.get('q', '') }}" required>
+            <button type="submit"><i class="fa-solid fa-play"></i> Execute SQL Search</button>
+        </form>
+    </div>
+
+    <!-- 2. Reflected Cross-Site Scripting (XSS) -->
+    <div class="card">
+        <h3><i class="fa-solid fa-comment-dots text-yellow"></i> 2. Support Inquiry (Reflected XSS)</h3>
+        <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 8px;">Submit live support inquiry or feedback message.</p>
+        <form action="/comment" method="GET">
+            <input type="text" name="msg" placeholder="e.g. <script>alert('XSS')</script> or Inquiry" value="{{ request.args.get('msg', '') }}" required>
+            <button type="submit"><i class="fa-solid fa-paper-plane"></i> Submit Inquiry</button>
+        </form>
+    </div>
+
+    <!-- 3. Remote Code Execution (RCE) -->
+    <div class="card">
+        <h3><i class="fa-solid fa-server" style="color: #a855f7;"></i> 3. Host Diagnostic (RCE)</h3>
+        <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 8px;">Server health ping, status, and network inspection.</p>
+        <form action="/exec" method="GET">
+            <input type="text" name="cmd" placeholder="e.g. whoami or id or 127.0.0.1; whoami" value="{{ request.args.get('cmd', '') }}" required>
+            <button type="submit"><i class="fa-solid fa-terminal"></i> Run Diagnostic</button>
+        </form>
+    </div>
+
+    <!-- 4. Path Traversal / LFI -->
+    <div class="card">
+        <h3><i class="fa-solid fa-file-invoice text-blue"></i> 4. Statement Reader (LFI)</h3>
+        <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 8px;">Fetch monthly PDF bank statements and audit logs.</p>
+        <form action="/file" method="GET">
+            <input type="text" name="name" placeholder="e.g. ../../../etc/passwd or statement_aug.txt" value="{{ request.args.get('name', '') }}" required>
+            <button type="submit"><i class="fa-solid fa-download"></i> Fetch File</button>
+        </form>
+    </div>
+
+    <!-- 5. Server-Side Request Forgery (SSRF) -->
+    <div class="card">
+        <h3><i class="fa-solid fa-satellite-dish" style="color: #ec4899;"></i> 5. FX Rate Webhook (SSRF)</h3>
+        <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 8px;">Fetch external exchange rates or cloud metadata.</p>
+        <form action="/webhook" method="GET">
+            <input type="text" name="url" placeholder="e.g. http://169.254.169.254/latest/meta-data/" value="{{ request.args.get('url', '') }}" required>
+            <button type="submit"><i class="fa-solid fa-globe"></i> Query Webhook</button>
+        </form>
+    </div>
+
+    <!-- 6. Insecure Direct Object Reference (IDOR) -->
+    <div class="card">
+        <h3><i class="fa-solid fa-id-card-clip text-green"></i> 6. Account Ledger (IDOR)</h3>
+        <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 8px;">View customer balance ledger by Account ID.</p>
+        <form action="/account/view" method="GET">
+            <input type="number" name="id" placeholder="e.g. 1 (You) or 3 (VIP Client Hamilton)" value="{{ request.args.get('id', '1') }}" required>
+            <button type="submit"><i class="fa-solid fa-eye"></i> View Account ID</button>
+        </form>
+    </div>
+
+    <!-- 7. CSRF / Insecure Fund Transfer -->
+    <div class="card">
+        <h3><i class="fa-solid fa-money-bill-transfer text-blue"></i> 7. Wire Fund Transfer (CSRF)</h3>
+        <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 8px;">Initiate funds transfer to destination account.</p>
+        <form action="/transfer" method="GET">
+            <input type="text" name="to_account" placeholder="Destination (e.g. 7721-3940-1029)" required>
+            <input type="number" name="amount" placeholder="Amount ($ e.g. 5000)" required>
+            <button type="submit"><i class="fa-solid fa-paper-plane"></i> Execute Transfer</button>
+        </form>
+    </div>
+
+    <!-- 8. Server-Side Template Injection (SSTI) -->
+    <div class="card">
+        <h3><i class="fa-solid fa-receipt text-yellow"></i> 8. Receipt Generator (SSTI)</h3>
+        <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 8px;">Generate custom branded PDF customer receipt.</p>
+        <form action="/receipt" method="GET">
+            <input type="text" name="name" placeholder="Customer Name (e.g. {{ 7*7 }} or John Doe)" required>
+            <button type="submit"><i class="fa-solid fa-print"></i> Generate Receipt</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

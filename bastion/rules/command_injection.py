@@ -1,6 +1,9 @@
+"""
+Remote Code Execution (RCE) / Command Injection detection rule (OWASP CRS 932100).
+"""
+
 import re
 from typing import List, Tuple
-
 from .base import Rule, Verdict
 
 _RCE_PATTERNS: List[Tuple[str, str]] = [
@@ -35,4 +38,3 @@ class CommandInjectionRule(Rule):
                         meta={"field": field_label, "matched_value": value[:200]},
                     )
         return Verdict.clean(self.RULE_ID)
-

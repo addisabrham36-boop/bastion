@@ -1,6 +1,9 @@
+"""
+Cross-Site Scripting (XSS) detection rule (OWASP CRS 941100).
+"""
+
 import re
 from typing import List, Tuple
-
 from .base import Rule, Verdict
 
 _XSS_PATTERNS: List[Tuple[str, str]] = [
@@ -41,4 +44,3 @@ class XSSRule(Rule):
                         meta={"field": field_label, "matched_value": value[:200]},
                     )
         return Verdict.clean(self.RULE_ID)
-

@@ -1,6 +1,9 @@
+"""
+Server-Side Request Forgery (SSRF) detection rule (OWASP CRS 934100).
+"""
+
 import re
 from typing import List, Tuple
-
 from .base import Rule, Verdict
 
 _SSRF_PATTERNS: List[Tuple[str, str]] = [
@@ -32,4 +35,3 @@ class SSRFRule(Rule):
                         meta={"field": field_label, "matched_value": value[:200]},
                     )
         return Verdict.clean(self.RULE_ID)
-

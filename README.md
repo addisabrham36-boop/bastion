@@ -1,71 +1,90 @@
-# Bastion
+# 🛡️ Bastion WAF
 
-A self-hosted Web Application Firewall — reverse proxy + signature-based
-detection engine, with a roadmap toward anomaly detection, an ML payload
-classifier, and LLM-assisted rule triage.
+A production-grade, self-hosted Web Application Firewall — reverse proxy + 30-rule OWASP CRS-aligned detection engine, real-time black & white security dashboard, and Docker support.
 
-## Structure
+[![License: MIT](https://img.shields.io/badge/License-MIT-white.svg)](LICENSE)
+[![Python: 3.13](https://img.shields.io/badge/Python-3.13-white.svg)](https://python.org)
 
-```
-bastion/
-├── bastion/                 # core package
-│   ├── core/
-│   │   ├── proxy.py         # reverse proxy — Phase 2
-│   │   ├── inspector.py     # request field extraction — Phase 2
-│   │   ├── normalizer.py    # decode/canonicalize before rule matching — Phase 1
-│   │   └── engine.py        # runs all rules, returns a verdict — Phase 1
-│   ├── rules/
-│   │   ├── base.py          # Rule ABC + Verdict — done (Phase 0)
-│   │   ├── sqli.py          # Phase 1
-│   │   ├── xss.py           # Phase 1
-│   │   ├── traversal.py     # Phase 1
-│   │   ├── command_injection.py  # Phase 1
-│   │   └── ssrf.py          # Phase 1
-│   └── detection/           # anomaly baselining, ML classifier — Phase 6
-├── api/
-│   └── server.py            # REST API backing the dashboard — Phase 3
-├── dashboard/
-│   └── index.html           # dashboard UI — built, currently mocked data
-├── database/
-│   ├── waf.db                # created at runtime, not committed
-│   └── migrations/
-├── config/
-│   ├── config.json          # engine/proxy/api settings
-│   └── blocklist.json       # IP/UA blocklists — editable without a redeploy
-├── tests/                   # per-rule regression tests — Phase 1
-└── logs/                    # runtime logs, not committed
-```
+---
 
-## Build phases
+## 🗂️ Detection Rules (30 Rules)
 
-0. **Repo skeleton** — done.
-1. **Detection core** — done. `normalizer.py` (repeated URL-decode, null-byte stripping, full path/key/body extraction), `engine.py` (auto-discovers rules, blocklists, dynamic rule toggling), all OWASP CRS detection engines: `sqli.py`, `xss.py`, `traversal.py`, `command_injection.py`, `ssrf.py`.
-2. **Proxy** — done. `proxy.py` + `inspector.py` with persistent connection pooling, dynamic upstream routing, and hop-by-hop header management.
-3. **Persistence + API** — done. `waf.db` schema (events, waf_rules, protected_sites) in `database/db.py`, exposed by `api/server.py` with `/api/stats`, `/api/events`, `/api/logs`, `/api/rules`, `/api/sites`.
-4. **Dashboard** — done. Real-time telemetry, live stream intercept, protected site management, and dynamic rule toggling in `dashboard/index.html`.
-5. **Hardening** — rate limiting, malformed-request handling, load testing.
-6. **AI roadmap** — `detection/anomaly.py`, `detection/classifier.py`, LLM-assisted triage.
+| Rule ID | Name | Category |
+|---|---|---|
+| `920100` | Invalid HTTP Request Method | HTTP Protocol |
+| `920200` | HTTP Header Anomaly | HTTP Protocol |
+| `920300` | CRLF Injection / HTTP Response Splitting | HTTP Protocol |
+| `921100` | HTTP Request Smuggling | HTTP Smuggling |
+| `913100` | Security Scanner Signature (Nikto, SQLMap, etc.) | Scanner Detection |
+| `913110` | Malicious Bot / Bad User-Agent | Scanner Detection |
+| `913120` | Attack Tool Path Signature | Scanner Detection |
+| `942100` | SQL Injection (SQLi) Shield | SQLi |
+| `942200` | MySQL / PostgreSQL Specific Injection | SQLi |
+| `942300` | SQLi in JSON / Advanced Encoding Bypass | SQLi |
+| `941100` | Cross-Site Scripting (XSS) Filter | XSS |
+| `941200` | DOM-Based XSS | XSS |
+| `930120` | Path Traversal / LFI Guard | Path Traversal |
+| `930100` | Null Byte Injection in File Paths | Path Traversal |
+| `932100` | Unix Command Injection Engine | RCE |
+| `932110` | Windows Command Injection Engine | RCE |
+| `932160` | Reverse Shell / Bind Shell Payload | RCE |
+| `944100` | Java EL / OGNL Injection | Java Injection |
+| `944110` | Log4Shell (CVE-2021-44228) | Java Injection |
+| `944200` | Java Deserialization Attack | Java Injection |
+| `933100` | PHP Code Injection | PHP Injection |
+| `933110` | PHP Object Injection | PHP Injection |
+| `933120` | PHP File Inclusion | PHP Injection |
+| `950100` | Remote File Inclusion (RFI) | RFI |
+| `950110` | RFI Evasion | RFI |
+| `951100` | MongoDB / NoSQL Injection | NoSQL Injection |
+| `951200` | Redis / CouchDB / Elasticsearch Injection | NoSQL Injection |
+| `952100` | Server-Side Template Injection (SSTI) | SSTI |
+| `953100` | XML External Entity (XXE) Injection | XXE |
+| `934100` | Server-Side Request Forgery (SSRF) Guard | SSRF |
 
-## Setup & Running
+---
 
-### ⚡ Global Command (Recommended)
-You can run the entire system from **any directory** or terminal window with a single command:
+## ⚡ Quick Start
+
+### Global Command (Any Terminal)
 ```bash
 bastion
 ```
-*(or `./start.sh` from the repository directory)*
 
-This automatically:
-- Resolves port conflicts and cleans stale connections
-- Launches the **Vulnerable Banking App** (`http://127.0.0.1:5000`)
-- Launches the **Bastion WAF Reverse Proxy** (`http://127.0.0.1:8080`)
-- Launches the **WAF Security Dashboard** (`http://127.0.0.1:8000`)
-- Gracefully handles `Ctrl+C` to terminate all services together
+### Or from project directory
+```bash
+./start.sh
+```
 
-### 🧪 Run Automated Tests
+### URLs
+| Service | URL | Description |
+|---|---|---|
+| 🏦 Protected Bank Portal | http://127.0.0.1:8080 | Via WAF proxy |
+| 📊 Security Dashboard | http://127.0.0.1:8000 | Live telemetry & rule toggles |
+| 🎯 Direct Target | http://127.0.0.1:5000 | Unprotected upstream |
+
+---
+
+## 🐳 Docker
+
+```bash
+# Start all services
+docker-compose up --build
+
+# Run in background
+docker-compose up -d --build
+```
+
+---
+
+## 🧪 Testing
+
 ```bash
 venv/bin/pytest -v
 ```
-*(68 comprehensive test cases across all attack vectors and false-positive checks).*
 
+---
 
+## 📄 License
+
+[MIT License](LICENSE) — Copyright (c) 2026 Abrham Addis

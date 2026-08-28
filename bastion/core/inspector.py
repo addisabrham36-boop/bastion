@@ -1,12 +1,9 @@
 """
-Extracts the fields rules actually need from a raw HTTP request: query
-params, headers, body (form/JSON/multipart), and path — decoupled from
-proxy.py so this can be unit-tested without a live socket or real upstream.
-Implemented in Phase 2, alongside proxy.py.
+Extracts normalized parameters and structures from raw HTTP requests.
 """
-from dataclasses import dataclass
-from typing import Dict
 
+from dataclasses import dataclass
+from typing import Dict, Optional
 from .normalizer import normalize_request, NormalizedRequest
 
 
@@ -19,11 +16,10 @@ def inspect_request(
     method: str,
     path: str,
     query_string: str = "",
-    headers: Dict[str, str] | None = None,
+    headers: Optional[Dict[str, str]] = None,
     body: bytes = b"",
     client_ip: str = "",
 ) -> InspectionResult:
-
     normalized = normalize_request(
         method=method,
         path=path,
@@ -32,5 +28,4 @@ def inspect_request(
         body=body,
         client_ip=client_ip,
     )
-
     return InspectionResult(request=normalized)
