@@ -1,164 +1,178 @@
 """
-Security scanner and attack-tool detection rules (OWASP CRS 913xxx).
-
-Covers:
-- 913100  ScannerSignatureRule  – known security scanner User-Agent strings
-- 913110  MaliciousBotRule      – known malicious bots / bad crawlers
-- 913120  AttackToolPathRule    – common attack-tool URL paths / probes
+Security Scanner & Automated Attack Tool Detection Rules (OWASP CRS 913xxx).
 """
 
 import re
 from typing import List, Tuple
-
 from .base import Rule, Verdict
 
-# ---------------------------------------------------------------------------
-# 913100 – Security scanner User-Agent signatures
-# ---------------------------------------------------------------------------
 
-_SCANNER_UA_PATTERNS: List[Tuple[str, str]] = [
-    (r"\bnikto\b", "Nikto vulnerability scanner"),
-    (r"\bnessus\b", "Nessus vulnerability scanner"),
-    (r"\bopenvas\b", "OpenVAS vulnerability scanner"),
-    (r"\bnmap\b", "Nmap network scanner"),
-    (r"\bmasscan\b", "Masscan port scanner"),
-    (r"\bacunetix\b", "Acunetix web vulnerability scanner"),
-    (r"\bappscan\b", "IBM AppScan web scanner"),
-    (r"\bburpsuite\b", "Burp Suite web security tool"),
-    (r"\bsqlmap\b", "SQLMap automated SQL injection tool"),
-    (r"\bowasp[\s-]?zap\b", "OWASP ZAP web application scanner"),
-    (r"\bw3af\b", "w3af web application attack framework"),
-    (r"\bskipfish\b", "Skipfish web application security scanner"),
-    (r"\bdirbuster\b", "DirBuster directory brute-force tool"),
-    (r"\bgobuster\b", "Gobuster directory/DNS brute-force tool"),
-    (r"\bferoxbuster\b", "Feroxbuster content discovery tool"),
-    (r"\bwfuzz\b", "Wfuzz web fuzzer"),
-    (r"\bffuf\b", "Ffuf web fuzzer"),
-    (r"\bhydra\b", "Hydra credential brute-force tool"),
-    (r"\bmedusa\b", "Medusa credential brute-force tool"),
-    (r"\bmetasploit\b", "Metasploit exploitation framework"),
-    (r"\bnuclei\b", "Nuclei template-based scanner"),
-    (r"\bzgrab\b", "ZGrab network scanner"),
-    (r"\bwhatweb\b", "WhatWeb web technology fingerprinter"),
-    (r"\bwpscan\b", "WPScan WordPress vulnerability scanner"),
-    (r"\bjoomscan\b", "JoomScan Joomla vulnerability scanner"),
+def _match_ua_helper(rule_id: str, compiled_patterns, request) -> Verdict:
+    ua = (request.headers or {}).get("user-agent", "")
+    if not ua:
+        return Verdict.clean(rule_id)
+    for pattern, reason in compiled_patterns:
+        if pattern.search(ua):
+            return Verdict(blocked=True, rule_id=rule_id, reason=reason, meta={"field": "header:user-agent", "matched_value": ua[:200]})
+    return Verdict.clean(rule_id)
+
+
+def _match_path_helper(rule_id: str, compiled_patterns, request) -> Verdict:
+    for field_label, value in request.iter_values():
+        if not value:
+            continue
+        for pattern, reason in compiled_patterns:
+            if pattern.search(value):
+                return Verdict(blocked=True, rule_id=rule_id, reason=reason, meta={"field": field_label, "matched_value": value[:200]})
+    return Verdict.clean(rule_id)
+
+
+_ALL_SCANNER_UAS = [
+    (r"\b(?:sqlmap|nikto|burpsuite|owasp[\s-]?zap|acunetix|appscan|netsparker|qualys|nessus|openvas|nmap|masscan|zgrab|nuclei|dirbuster|gobuster|feroxbuster|wfuzz|ffuf|skipfish|w3af|wpscan|joomscan|metasploit|cobaltstrike|hydra|medusa)\b", "Security scanner / vulnerability probing User-Agent signature"),
 ]
-_COMPILED_SCANNER_UA = [
-    (re.compile(p, re.IGNORECASE | re.DOTALL), r) for p, r in _SCANNER_UA_PATTERNS
-]
-
-# ---------------------------------------------------------------------------
-# 913110 – Malicious bots / bad crawlers
-# ---------------------------------------------------------------------------
-
-_MALICIOUS_BOT_PATTERNS: List[Tuple[str, str]] = [
-    (r"\bpython-requests\b", "Automated Python requests library (bot/scraper)"),
-    (r"\bcurl\b.*\bbash\b", "curl piped to bash – likely exploit delivery"),
-    (r"\blibwww-perl\b", "libwww-perl automated HTTP client"),
-    (r"\bpython-urllib\b", "python-urllib automated HTTP client"),
-    (r"\bgo-http-client\b", "Go HTTP client (bot/scanner)"),
-    (r"\bscrapy\b", "Scrapy web scraping framework"),
-    (r"\bzgrab\b", "ZGrab automated network scanner"),
-    (r"\bmasscan\b", "Masscan high-speed port scanner"),
-    (r"\bshodan\b", "Shodan internet-wide scanner"),
-]
-_COMPILED_MALICIOUS_BOT = [
-    (re.compile(p, re.IGNORECASE | re.DOTALL), r) for p, r in _MALICIOUS_BOT_PATTERNS
-]
-
-# ---------------------------------------------------------------------------
-# 913120 – Common attack-tool paths / probing patterns
-# ---------------------------------------------------------------------------
-
-_ATTACK_PATH_PATTERNS: List[Tuple[str, str]] = [
-    (r"/wp-admin\b", "WordPress admin panel probe"),
-    (r"/wp-login\.php\b", "WordPress login page probe"),
-    (r"/\.git/", "Git repository exposure probe"),
-    (r"/\.env\b", "Environment file disclosure probe"),
-    (r"/phpmyadmin\b", "phpMyAdmin panel probe"),
-    (r"/\.htaccess\b", "Apache .htaccess disclosure probe"),
-    (r"/admin/config\b", "Admin configuration endpoint probe"),
-    (r"/server-status\b", "Apache server-status probe"),
-    (r"/actuator/", "Spring Boot Actuator endpoint probe"),
-    (r"/api/swagger\b", "Swagger API documentation probe"),
-    (r"/api/v\d+/swagger\b", "Versioned Swagger API probe"),
-    (r"\bxmlrpc\.php\b", "WordPress XML-RPC probe"),
-    (r"/shell\.php\b", "Web shell probe (shell.php)"),
-    (r"/cmd\.php\b", "Web shell probe (cmd.php)"),
-    (r"/webshell\b", "Web shell probe"),
-    (r"\beval\.php\b", "Eval PHP web shell probe"),
-    (r"\bc99\.php\b", "c99 web shell probe"),
-    (r"\br57\.php\b", "r57 web shell probe"),
-]
-_COMPILED_ATTACK_PATH = [
-    (re.compile(p, re.IGNORECASE | re.DOTALL), r) for p, r in _ATTACK_PATH_PATTERNS
-]
-
-
-# ---------------------------------------------------------------------------
-# Rule classes
-# ---------------------------------------------------------------------------
+_C_ALL_SCANNER_UAS = [(re.compile(p, re.I), r) for p, r in _ALL_SCANNER_UAS]
 
 
 class ScannerSignatureRule(Rule):
-    """Detect security scanner User-Agent signatures (OWASP CRS 913100)."""
-
     RULE_ID = "913100"
     NAME = "Security Scanner User-Agent Detection"
+    def match(self, request) -> Verdict: return _match_ua_helper(self.RULE_ID, _C_ALL_SCANNER_UAS, request)
 
+
+class ScannerSQLMapRule(Rule):
+    RULE_ID = "913101"
+    NAME = "Scanner SQLMap Automated Injection Detection"
     def match(self, request) -> Verdict:
-        ua = (request.headers or {}).get("user-agent", "")
-        if not ua:
-            return Verdict.clean(self.RULE_ID)
-        for pattern, reason in _COMPILED_SCANNER_UA:
-            if pattern.search(ua):
-                return Verdict(
-                    blocked=True,
-                    rule_id=self.RULE_ID,
-                    reason=reason,
-                    meta={"field": "header:user-agent", "matched_value": ua[:200]},
-                )
-        return Verdict.clean(self.RULE_ID)
+        p = [(re.compile(r"\bsqlmap\b", re.I), "SQLMap scanner")]
+        return _match_ua_helper(self.RULE_ID, p, request)
+
+
+class ScannerNiktoRule(Rule):
+    RULE_ID = "913102"
+    NAME = "Scanner Nikto Web Vulnerability Scanner"
+    def match(self, request) -> Verdict:
+        p = [(re.compile(r"\bnikto\b", re.I), "Nikto scanner")]
+        return _match_ua_helper(self.RULE_ID, p, request)
+
+
+class ScannerBurpZAPRule(Rule):
+    RULE_ID = "913103"
+    NAME = "Scanner Burp Suite & OWASP ZAP Detection"
+    def match(self, request) -> Verdict:
+        p = [(re.compile(r"\b(?:burpsuite|owasp[\s-]?zap)\b", re.I), "Burp/ZAP scanner")]
+        return _match_ua_helper(self.RULE_ID, p, request)
+
+
+class ScannerCommercialRule(Rule):
+    RULE_ID = "913104"
+    NAME = "Scanner Commercial Vulnerability Scanners"
+    def match(self, request) -> Verdict:
+        p = [(re.compile(r"\b(?:acunetix|appscan|netsparker|qualys|nessus|openvas)\b", re.I), "Commercial scanner")]
+        return _match_ua_helper(self.RULE_ID, p, request)
+
+
+class ScannerPortScannersRule(Rule):
+    RULE_ID = "913105"
+    NAME = "Scanner Nmap / Masscan / ZGrab Network Probers"
+    def match(self, request) -> Verdict:
+        p = [(re.compile(r"\b(?:nmap|masscan|zgrab)\b", re.I), "Network port scanner")]
+        return _match_ua_helper(self.RULE_ID, p, request)
+
+
+class ScannerNucleiRule(Rule):
+    RULE_ID = "913106"
+    NAME = "Scanner Nuclei Template Scanner"
+    def match(self, request) -> Verdict:
+        p = [(re.compile(r"\bnuclei\b", re.I), "Nuclei scanner")]
+        return _match_ua_helper(self.RULE_ID, p, request)
+
+
+class ScannerFuzzersRule(Rule):
+    RULE_ID = "913107"
+    NAME = "Scanner Directory & Content Fuzzers"
+    def match(self, request) -> Verdict:
+        p = [(re.compile(r"\b(?:dirbuster|gobuster|feroxbuster|wfuzz|ffuf|skipfish|w3af)\b", re.I), "Directory fuzzer")]
+        return _match_ua_helper(self.RULE_ID, p, request)
+
+
+class ScannerCMSRule(Rule):
+    RULE_ID = "913108"
+    NAME = "Scanner CMS Vulnerability Probers (WPScan)"
+    def match(self, request) -> Verdict:
+        p = [(re.compile(r"\b(?:wpscan|joomscan|droopescan)\b", re.I), "CMS scanner")]
+        return _match_ua_helper(self.RULE_ID, p, request)
+
+
+class ScannerExploitFrameworkRule(Rule):
+    RULE_ID = "913109"
+    NAME = "Scanner Metasploit & Exploit Frameworks"
+    def match(self, request) -> Verdict:
+        p = [(re.compile(r"\b(?:metasploit|cobaltstrike|havoc)\b", re.I), "Exploit framework")]
+        return _match_ua_helper(self.RULE_ID, p, request)
 
 
 class MaliciousBotRule(Rule):
-    """Detect known malicious bots and bad crawlers in User-Agent (OWASP CRS 913110)."""
-
     RULE_ID = "913110"
-    NAME = "Malicious Bot / Bad Crawler Detection"
-
+    NAME = "Malicious Bot & Bad Crawler Detection"
     def match(self, request) -> Verdict:
-        ua = (request.headers or {}).get("user-agent", "")
-        if not ua:
-            return Verdict.clean(self.RULE_ID)
-        for pattern, reason in _COMPILED_MALICIOUS_BOT:
-            if pattern.search(ua):
-                return Verdict(
-                    blocked=True,
-                    rule_id=self.RULE_ID,
-                    reason=reason,
-                    meta={"field": "header:user-agent", "matched_value": ua[:200]},
-                )
-        return Verdict.clean(self.RULE_ID)
+        p = [(re.compile(r"\b(?:libwww-perl|python-urllib|scrapy|shodan|censys|whatweb)\b", re.I), "Malicious bot User-Agent")]
+        return _match_ua_helper(self.RULE_ID, p, request)
+
+
+_ALL_ATTACK_PATHS = [
+    (r"/\.env\b", "Environment secrets file probe (/.env)"),
+    (r"/config\.(?:json|yml|yaml|ini)\b", "Configuration file exposure probe"),
+    (r"/\.git/", "Git version control directory probe (/.git/)"),
+    (r"/\.svn/", "SVN repository directory probe (/.svn/)"),
+    (r"/phpmyadmin\b|/pma\b|/adminer\.php\b", "Database administration panel probe (/phpmyadmin)"),
+    (r"/actuator/(?:env|health|metrics|heapdump|loggers)", "Spring Boot Actuator inspection probe"),
+    (r"/(?:shell|cmd|c99|r57|alfa|wso|b374k|mini)\.php\b", "Known web shell backdoor filename probe"),
+    (r"/wp-login\.php\b|/wp-admin\b", "WordPress administrative login probe"),
+]
+_C_ALL_ATTACK_PATHS = [(re.compile(p, re.I), r) for p, r in _ALL_ATTACK_PATHS]
 
 
 class AttackToolPathRule(Rule):
-    """Detect common attack-tool URL paths and probing attempts (OWASP CRS 913120)."""
-
     RULE_ID = "913120"
-    NAME = "Attack Tool Path / Probing Detection"
+    NAME = "Attack Tool Path & Probing Detection"
+    def match(self, request) -> Verdict: return _match_path_helper(self.RULE_ID, _C_ALL_ATTACK_PATHS, request)
 
+
+class AttackPathSecretsRule(Rule):
+    RULE_ID = "913121"
+    NAME = "Probing Sensitive Env Files & Credentials"
     def match(self, request) -> Verdict:
-        # Check path and any query values for known attack paths
-        for field_label, value in request.iter_values():
-            if not value:
-                continue
-            for pattern, reason in _COMPILED_ATTACK_PATH:
-                if pattern.search(value):
-                    return Verdict(
-                        blocked=True,
-                        rule_id=self.RULE_ID,
-                        reason=reason,
-                        meta={"field": field_label, "matched_value": value[:200]},
-                    )
-        return Verdict.clean(self.RULE_ID)
+        p = [(re.compile(r"/\.env\b|/config\.(?:json|yml|ini)\b", re.I), "Secrets probe")]
+        return _match_path_helper(self.RULE_ID, p, request)
+
+
+class AttackPathVCSRule(Rule):
+    RULE_ID = "913122"
+    NAME = "Probing Version Control Repositories (.git)"
+    def match(self, request) -> Verdict:
+        p = [(re.compile(r"/\.git/|/\.svn/", re.I), "VCS directory probe")]
+        return _match_path_helper(self.RULE_ID, p, request)
+
+
+class AttackPathDBPanelRule(Rule):
+    RULE_ID = "913123"
+    NAME = "Probing Database Admin Panels (phpMyAdmin)"
+    def match(self, request) -> Verdict:
+        p = [(re.compile(r"/phpmyadmin\b|/adminer\.php\b", re.I), "DB panel probe")]
+        return _match_path_helper(self.RULE_ID, p, request)
+
+
+class AttackPathActuatorRule(Rule):
+    RULE_ID = "913124"
+    NAME = "Probing Server Metrics & Spring Actuator"
+    def match(self, request) -> Verdict:
+        p = [(re.compile(r"/actuator/|/server-status\b", re.I), "Actuator/Metrics probe")]
+        return _match_path_helper(self.RULE_ID, p, request)
+
+
+class AttackPathWebShellRule(Rule):
+    RULE_ID = "913125"
+    NAME = "Probing Web Shells & Administrative Logins"
+    def match(self, request) -> Verdict:
+        p = [(re.compile(r"/(?:shell|cmd|c99|r57)\.php\b|/wp-login\.php\b", re.I), "Web shell/login probe")]
+        return _match_path_helper(self.RULE_ID, p, request)

@@ -69,58 +69,36 @@ def init_db():
             """
         )
 
-        default_rules = [
-            # ── OWASP CRS Core Ruleset ──────────────────────────────────────
-            # HTTP Protocol Anomalies
-            ("920100", "Invalid HTTP Request Method", "HTTP Protocol", 1),
-            ("920200", "HTTP Header Anomaly", "HTTP Protocol", 1),
-            ("920300", "CRLF Injection / HTTP Response Splitting", "HTTP Protocol", 1),
-            # HTTP Request Smuggling
-            ("921100", "HTTP Request Smuggling", "HTTP Smuggling", 1),
-            # Scanner / Recon Detection
-            ("913100", "Security Scanner Signature", "Scanner Detection", 1),
-            ("913110", "Malicious Bot / Bad User-Agent", "Scanner Detection", 1),
-            ("913120", "Attack Tool Path Signature", "Scanner Detection", 1),
-            # SQL Injection
-            ("942100", "SQL Injection (SQLi) Shield", "SQLi", 1),
-            ("942200", "MySQL / PostgreSQL Specific Injection", "SQLi", 1),
-            ("942300", "SQLi in JSON / Advanced Encoding Bypass", "SQLi", 1),
-            # Cross-Site Scripting
-            ("941100", "Cross-Site Scripting (XSS) Filter", "XSS", 1),
-            ("941200", "DOM-Based XSS via location.hash / document.write", "XSS", 1),
-            # Path Traversal / LFI
-            ("930120", "Path Traversal / LFI Guard", "Path Traversal", 1),
-            ("930100", "Null Byte Injection in File Paths", "Path Traversal", 1),
-            # Remote Code Execution
-            ("932100", "Unix Command Injection Engine", "RCE", 1),
-            ("932110", "Windows Command Injection Engine", "RCE", 1),
-            ("932160", "Reverse Shell / Bind Shell Payload", "RCE", 1),
-            # Java Injection
-            ("944100", "Java EL / OGNL Injection", "Java Injection", 1),
-            ("944110", "Log4Shell (CVE-2021-44228) Detection", "Java Injection", 1),
-            ("944200", "Java Deserialization Attack", "Java Injection", 1),
-            # PHP Injection
-            ("933100", "PHP Code Injection", "PHP Injection", 1),
-            ("933110", "PHP Object Injection (Unserialize)", "PHP Injection", 1),
-            ("933120", "PHP File Inclusion", "PHP Injection", 1),
-            # Remote File Inclusion
-            ("950100", "Remote File Inclusion (RFI)", "RFI", 1),
-            ("950110", "RFI Evasion via URL Encoding", "RFI", 1),
-            # NoSQL Injection
-            ("951100", "MongoDB / NoSQL Injection", "NoSQL Injection", 1),
-            ("951200", "Redis / CouchDB / Elasticsearch Injection", "NoSQL Injection", 1),
-            # Server-Side Template Injection
-            ("952100", "Server-Side Template Injection (SSTI)", "SSTI", 1),
-            # XML External Entity
-            ("953100", "XML External Entity (XXE) Injection", "XXE", 1),
-            # SSRF
-            ("934100", "Server-Side Request Forgery (SSRF) Guard", "SSRF", 1),
-        ]
-        for r in default_rules:
-            conn.execute(
-                "INSERT OR IGNORE INTO waf_rules (rule_id, rule_name, category, enabled) VALUES (?, ?, ?, ?)",
-                r,
-            )
+        # Auto-seed all discovered rules
+        try:
+            from bastion.core.engine import discover_rules
+            discovered = discover_rules()
+            cat_map = {
+                "913": "Scanner Detection",
+                "920": "HTTP Protocol",
+                "921": "HTTP Smuggling",
+                "930": "Path Traversal",
+                "932": "Remote Code Execution",
+                "933": "PHP Injection",
+                "934": "SSRF",
+                "941": "Cross-Site Scripting",
+                "942": "SQL Injection",
+                "944": "Java & Log4Shell",
+                "950": "Remote File Inclusion",
+                "951": "NoSQL Injection",
+                "952": "Template Injection (SSTI)",
+                "953": "XML External Entity (XXE)",
+                "960": "Client-Side & Logic",
+            }
+            for rule in discovered:
+                cat = cat_map.get(rule.RULE_ID[:3], "General Security")
+                conn.execute(
+                    "INSERT OR IGNORE INTO waf_rules (rule_id, rule_name, category, enabled) VALUES (?, ?, ?, 1)",
+                    (rule.RULE_ID, rule.NAME, cat),
+                )
+        except Exception as e:
+            pass
+
 
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM protected_sites")

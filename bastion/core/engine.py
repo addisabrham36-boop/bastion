@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def discover_rules() -> List[Rule]:
-    """Import every rule class defined in bastion/rules/."""
+    """Import every rule class defined in bastion/rules/ and sort by RULE_ID."""
     instances: List[Rule] = []
     for _, module_name, _ in pkgutil.iter_modules(rules_package.__path__):
         if module_name == "base":
@@ -27,6 +27,8 @@ def discover_rules() -> List[Rule]:
         for _, obj in inspect.getmembers(module, inspect.isclass):
             if issubclass(obj, Rule) and obj is not Rule and obj.__module__ == module.__name__:
                 instances.append(obj())
+    # Deterministic sorting by RULE_ID and NAME
+    instances.sort(key=lambda r: (r.RULE_ID, r.NAME))
     return instances
 
 

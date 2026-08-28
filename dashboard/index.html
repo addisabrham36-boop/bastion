@@ -9,16 +9,15 @@
     <style>
         :root {
             --bg-dark: #000000;
-            --bg-card: #0d0d0d;
+            --bg-card: #0c0c0c;
             --bg-card-hover: #141414;
             --bg-input: #111111;
-            --border-color: #262626;
-            --border-highlight: #404040;
+            --border-color: #222222;
+            --border-highlight: #444444;
             --text-main: #ffffff;
             --text-muted: #888888;
             --text-subtle: #555555;
             --accent-white: #ffffff;
-            --accent-gray: #a3a3a3;
             --sidebar-width: 260px;
         }
 
@@ -66,7 +65,7 @@
             height: 36px;
             background: #ffffff;
             color: #000000;
-            border-radius: 8px;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -97,6 +96,7 @@
             flex-direction: column;
             gap: 6px;
             flex: 1;
+            overflow-y: auto;
         }
 
         .nav-item {
@@ -120,10 +120,20 @@
         }
 
         .nav-item.active {
-            background: #1f1f1f;
+            background: #1c1c1c;
             color: #ffffff;
-            border-color: #404040;
+            border-color: #333333;
             font-weight: 600;
+        }
+
+        .nav-badge {
+            margin-left: auto;
+            background: #222222;
+            color: #ffffff;
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            border: 1px solid #333333;
         }
 
         .sidebar-footer {
@@ -160,7 +170,7 @@
         }
 
         .status-badge {
-            background: #171717;
+            background: #141414;
             border: 1px solid #333333;
             color: #ffffff;
             padding: 6px 14px;
@@ -319,21 +329,21 @@
         }
 
         .badge-blocked {
-            background: #262626;
+            background: #222222;
             border: 1px solid #ffffff;
             color: #ffffff;
         }
 
         .badge-allowed {
-            background: #141414;
-            border: 1px solid #404040;
-            color: #a3a3a3;
+            background: #111111;
+            border: 1px solid #444444;
+            color: #888888;
         }
 
         .badge-rule {
             background: #171717;
-            border: 1px solid #525252;
-            color: #e5e5e5;
+            border: 1px solid #555555;
+            color: #ffffff;
             font-family: monospace;
         }
 
@@ -355,8 +365,8 @@
         }
 
         .btn:hover {
-            background: #e5e5e5;
-            border-color: #e5e5e5;
+            background: #e0e0e0;
+            border-color: #e0e0e0;
         }
 
         .btn-outline {
@@ -366,18 +376,18 @@
         }
 
         .btn-outline:hover {
-            background: #1c1c1c;
+            background: #1a1a1a;
             border-color: #666666;
         }
 
         .btn-danger {
-            background: #1c1c1c;
+            background: #1a1a1a;
             color: #ffffff;
-            border: 1px solid #404040;
+            border: 1px solid #444444;
         }
 
         .btn-danger:hover {
-            background: #2a2a2a;
+            background: #262626;
             border-color: #888888;
         }
 
@@ -404,6 +414,7 @@
             display: inline-block;
             width: 44px;
             height: 24px;
+            flex-shrink: 0;
         }
 
         .switch input {
@@ -419,8 +430,8 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: #262626;
-            border: 1px solid #404040;
+            background-color: #222222;
+            border: 1px solid #444444;
             transition: 0.2s;
             border-radius: 24px;
         }
@@ -496,34 +507,103 @@
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.9);
         }
 
-        .rule-group-card {
+        /* Rule Engine specific styles */
+        .filter-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .pill-btn {
+            background: #111111;
             border: 1px solid var(--border-color);
-            background: #0d0d0d;
+            color: var(--text-muted);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .pill-btn:hover {
+            background: #1c1c1c;
+            color: #ffffff;
+            border-color: #555555;
+        }
+
+        .pill-btn.active {
+            background: #ffffff;
+            color: #000000;
+            border-color: #ffffff;
+        }
+
+        .category-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
             border-radius: 8px;
-            padding: 18px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 14px;
         }
 
-        .rule-group-header {
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1c1c1c;
+            padding-bottom: 12px;
+        }
+
+        .category-header h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .rule-card {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid #1f1f1f;
-            padding-bottom: 10px;
+            padding: 10px 14px;
+            background: #080808;
+            border: 1px solid #1a1a1a;
+            border-radius: 6px;
+            transition: all 0.15s ease;
         }
 
-        .rule-item {
+        .rule-card:hover {
+            border-color: #333333;
+            background: #0f0f0f;
+        }
+
+        .rule-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+            padding-right: 15px;
+        }
+
+        .rule-title-row {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #141414;
+            gap: 10px;
         }
 
-        .rule-item:last-child {
-            border-bottom: none;
+        .rule-name {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .rule-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
         }
     </style>
 </head>
@@ -543,14 +623,14 @@
             <li class="nav-item active" onclick="switchTab('overview', this)">
                 <i class="fa-solid fa-gauge-high"></i> Overview
             </li>
+            <li class="nav-item" onclick="switchTab('rules', this)">
+                <i class="fa-solid fa-sliders"></i> Rule Engine <span class="nav-badge" id="nav-rule-count">100+</span>
+            </li>
             <li class="nav-item" onclick="switchTab('sites', this)">
                 <i class="fa-solid fa-globe"></i> Protected Domains
             </li>
             <li class="nav-item" onclick="switchTab('logs', this)">
                 <i class="fa-solid fa-list-check"></i> Security Audit Logs
-            </li>
-            <li class="nav-item" onclick="switchTab('rules', this)">
-                <i class="fa-solid fa-sliders"></i> Rule Engine (30 Rules)
             </li>
             <li class="nav-item" onclick="switchTab('system', this)">
                 <i class="fa-solid fa-server"></i> System Telemetry
@@ -558,7 +638,7 @@
         </ul>
 
         <div class="sidebar-footer">
-            <span>Bastion WAF v2.0</span>
+            <span>Bastion Enterprise WAF</span>
             <span style="font-size: 0.7rem; color: #555555;">MIT License</span>
         </div>
     </aside>
@@ -568,7 +648,7 @@
         <!-- Top Bar -->
         <header class="topbar">
             <div class="status-badge" id="engine-status-badge">
-                <span class="status-dot"></span> WAF Engine: Active Defense (30 Rules)
+                <span class="status-dot"></span> <span id="topbar-status-text">WAF Defense: 100+ Rules Active</span>
             </div>
             <div style="display: flex; align-items: center; gap: 20px;">
                 <span style="font-size: 0.85rem; color: var(--text-muted);"><i class="fa-solid fa-clock"></i> Uptime: <strong id="topbar-uptime" style="color: var(--text-main);">Live</strong></span>
@@ -604,11 +684,11 @@
                     </div>
                     <div class="card">
                         <div class="card-header">
-                            <span>Protected Domains</span>
-                            <i class="fa-solid fa-globe"></i>
+                            <span>Active WAF Rules</span>
+                            <i class="fa-solid fa-sliders"></i>
                         </div>
-                        <div class="metric-value" id="stat-protected-domains">1</div>
-                        <div class="metric-sub">Reverse proxies operational</div>
+                        <div class="metric-value" id="stat-active-rules">100</div>
+                        <div class="metric-sub" id="stat-rules-coverage">100% Defense Coverage</div>
                     </div>
                     <div class="card">
                         <div class="card-header">
@@ -669,7 +749,59 @@
                 </div>
             </div>
 
-            <!-- TAB 2: PROTECTED SITES -->
+            <!-- TAB 2: RULE ENGINE (100+ REAL RULES) -->
+            <div id="rules" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div>
+                        <h2>OWASP Core Rule Set (CRS) Detection Engine</h2>
+                        <p style="font-size: 0.85rem; color: var(--text-muted);">
+                            Manage and toggle <strong><span id="rules-total-count">100+</span> enterprise-grade detection rules</strong> in real-time.
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-outline" style="font-size: 0.8rem;" onclick="toggleAllRules(true)">
+                            <i class="fa-solid fa-check-double"></i> Enable All
+                        </button>
+                        <button class="btn btn-outline" style="font-size: 0.8rem;" onclick="toggleAllRules(false)">
+                            <i class="fa-solid fa-ban"></i> Disable All
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search & Filters -->
+                <div class="card" style="display: flex; flex-direction: column; gap: 12px;">
+                    <input type="text" id="rule-search-input" placeholder="Search rules by name, ID (e.g. 942100), category, or keyword..." class="form-control" oninput="filterRules()">
+                    
+                    <div class="filter-pills" id="category-pills">
+                        <button class="pill-btn active" onclick="selectCategory('ALL', this)">All Categories</button>
+                        <button class="pill-btn" onclick="selectCategory('SQL Injection', this)">SQLi</button>
+                        <button class="pill-btn" onclick="selectCategory('Cross-Site Scripting', this)">XSS</button>
+                        <button class="pill-btn" onclick="selectCategory('Remote Code Execution', this)">RCE</button>
+                        <button class="pill-btn" onclick="selectCategory('Path Traversal', this)">Traversal</button>
+                        <button class="pill-btn" onclick="selectCategory('SSRF', this)">SSRF</button>
+                        <button class="pill-btn" onclick="selectCategory('Scanner Detection', this)">Scanners</button>
+                        <button class="pill-btn" onclick="selectCategory('HTTP Protocol', this)">Protocol</button>
+                        <button class="pill-btn" onclick="selectCategory('HTTP Smuggling', this)">Smuggling</button>
+                        <button class="pill-btn" onclick="selectCategory('Java & Log4Shell', this)">Java/Log4j</button>
+                        <button class="pill-btn" onclick="selectCategory('PHP Injection', this)">PHP</button>
+                        <button class="pill-btn" onclick="selectCategory('Remote File Inclusion', this)">RFI</button>
+                        <button class="pill-btn" onclick="selectCategory('NoSQL Injection', this)">NoSQL</button>
+                        <button class="pill-btn" onclick="selectCategory('Template Injection (SSTI)', this)">SSTI</button>
+                        <button class="pill-btn" onclick="selectCategory('XML External Entity (XXE)', this)">XXE</button>
+                        <button class="pill-btn" onclick="selectCategory('Client-Side & Logic', this)">Client & Logic</button>
+                    </div>
+                </div>
+
+                <!-- Dynamically Generated Rules Container -->
+                <div id="rules-dynamic-container" style="display: flex; flex-direction: column; gap: 20px;">
+                    <div style="text-align: center; color: var(--text-muted); padding: 40px;">
+                        <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                        <p>Loading 100+ detection rules from database...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: PROTECTED SITES -->
             <div id="sites" class="tab-content">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <h2>Protected Domain Routing</h2>
@@ -698,7 +830,7 @@
                 </div>
             </div>
 
-            <!-- TAB 3: SECURITY LOGS -->
+            <!-- TAB 4: SECURITY LOGS -->
             <div id="logs" class="tab-content">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <h2>Security Event Audit Logs</h2>
@@ -754,330 +886,6 @@
                 </div>
             </div>
 
-            <!-- TAB 4: RULE ENGINE -->
-            <div id="rules" class="tab-content">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <h2>OWASP Core Rule Set (CRS) Detection Engine</h2>
-                        <p style="font-size: 0.85rem; color: var(--text-muted);">Toggle 30 specialized detection rules dynamically. Changes sync live with reverse proxy engine.</p>
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px;" id="rules-container">
-                    
-                    <!-- 1. SQLi -->
-                    <div class="rule-group-card">
-                        <div class="rule-group-header">
-                            <div>
-                                <h3><i class="fa-solid fa-database"></i> SQL Injection (SQLi) Shield</h3>
-                                <p style="font-size: 0.8rem; color: var(--text-muted);">UNION, tautologies, blind, stacked queries</p>
-                            </div>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">SQLi Core Shield (942100)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">UNION, Boolean tautologies, sleep(), waitfor</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-942100" checked onchange="toggleRule('942100', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">RDBMS Specific Injections (942200)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">MySQL, PostgreSQL, Oracle dialect payloads</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-942200" checked onchange="toggleRule('942200', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">JSON & Advanced Encoding SQLi (942300)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">Nested JSON and multi-encoded evasion</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-942300" checked onchange="toggleRule('942300', this.checked)"><span class="slider"></span></label>
-                        </div>
-                    </div>
-
-                    <!-- 2. XSS -->
-                    <div class="rule-group-card">
-                        <div class="rule-group-header">
-                            <div>
-                                <h3><i class="fa-solid fa-code"></i> Cross-Site Scripting (XSS) Filter</h3>
-                                <p style="font-size: 0.8rem; color: var(--text-muted);">Reflected, stored, and DOM-based XSS vectors</p>
-                            </div>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">XSS Filter Engine (941100)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">&lt;script&gt;, event handlers, javascript: URIs</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-941100" checked onchange="toggleRule('941100', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">DOM-Based XSS Sink Guard (941200)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">location.hash, document.write DOM sinks</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-941200" checked onchange="toggleRule('941200', this.checked)"><span class="slider"></span></label>
-                        </div>
-                    </div>
-
-                    <!-- 3. Path Traversal -->
-                    <div class="rule-group-card">
-                        <div class="rule-group-header">
-                            <div>
-                                <h3><i class="fa-solid fa-folder-open"></i> Path Traversal & LFI Guard</h3>
-                                <p style="font-size: 0.8rem; color: var(--text-muted);">Local file disclosure and traversal sequences</p>
-                            </div>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">Path Traversal / LFI (930120)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">../ sequences, /etc/passwd, win.ini, web.config</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-930120" checked onchange="toggleRule('930120', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">Null Byte Path Injection (930100)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">%00 null byte extension bypasses</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-930100" checked onchange="toggleRule('930100', this.checked)"><span class="slider"></span></label>
-                        </div>
-                    </div>
-
-                    <!-- 4. RCE -->
-                    <div class="rule-group-card">
-                        <div class="rule-group-header">
-                            <div>
-                                <h3><i class="fa-solid fa-terminal"></i> Remote Code Execution (RCE)</h3>
-                                <p style="font-size: 0.8rem; color: var(--text-muted);">OS command injection and shells</p>
-                            </div>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">Unix Command Injection (932100)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">Pipes, subshells $(), backticks, system binaries</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-932100" checked onchange="toggleRule('932100', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">Windows Command Injection (932110)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">cmd.exe, PowerShell encoded commands</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-932110" checked onchange="toggleRule('932110', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">Reverse / Bind Shells (932160)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">Bash /dev/tcp, netcat, python socket payloads</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-932160" checked onchange="toggleRule('932160', this.checked)"><span class="slider"></span></label>
-                        </div>
-                    </div>
-
-                    <!-- 5. Java & Log4Shell -->
-                    <div class="rule-group-card">
-                        <div class="rule-group-header">
-                            <div>
-                                <h3><i class="fa-brands fa-java"></i> Java & Log4Shell Guard</h3>
-                                <p style="font-size: 0.8rem; color: var(--text-muted);">JNDI, EL, OGNL, and deserialization</p>
-                            </div>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">Log4Shell CVE-2021-44228 (944110)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">${jndi:ldap/rmi/dns} and nested evasions</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-944110" checked onchange="toggleRule('944110', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">Java EL & OGNL Injection (944100)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">Runtime.getRuntime(), ProcessBuilder expressions</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-944100" checked onchange="toggleRule('944100', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">Java Deserialization (944200)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">rO0AB object headers, ysoserial gadget chains</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-944200" checked onchange="toggleRule('944200', this.checked)"><span class="slider"></span></label>
-                        </div>
-                    </div>
-
-                    <!-- 6. PHP -->
-                    <div class="rule-group-card">
-                        <div class="rule-group-header">
-                            <div>
-                                <h3><i class="fa-brands fa-php"></i> PHP Injection Shield</h3>
-                                <p style="font-size: 0.8rem; color: var(--text-muted);">Code evaluation, wrappers, and deserialization</p>
-                            </div>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">PHP Code Injection (933100)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">eval(base64_decode), &lt;?php tags, passthru</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-933100" checked onchange="toggleRule('933100', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">PHP Object Injection (933110)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">unserialize() object payload structures O:8:</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-933110" checked onchange="toggleRule('933110', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">PHP File Inclusion & Wrappers (933120)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">php://filter, php://input, data:// wrappers</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-933120" checked onchange="toggleRule('933120', this.checked)"><span class="slider"></span></label>
-                        </div>
-                    </div>
-
-                    <!-- 7. Scanners & Recon -->
-                    <div class="rule-group-card">
-                        <div class="rule-group-header">
-                            <div>
-                                <h3><i class="fa-solid fa-radar"></i> Scanner & Recon Detection</h3>
-                                <p style="font-size: 0.8rem; color: var(--text-muted);">Automated vulnerability tools and scanners</p>
-                            </div>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">Vulnerability Scanner UAs (913100)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">Nikto, SQLMap, Burp Suite, Nessus, Nmap</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-913100" checked onchange="toggleRule('913100', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">Malicious Bot / Scraper UAs (913110)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">Masscan, ZGrab, libwww-perl, Shodan probes</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-913110" checked onchange="toggleRule('913110', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">Attack Tool Paths & Probes (913120)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">/.env, /wp-admin, /phpmyadmin, actuator probes</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-913120" checked onchange="toggleRule('913120', this.checked)"><span class="slider"></span></label>
-                        </div>
-                    </div>
-
-                    <!-- 8. HTTP Protocol & Smuggling -->
-                    <div class="rule-group-card">
-                        <div class="rule-group-header">
-                            <div>
-                                <h3><i class="fa-solid fa-network-wired"></i> HTTP Protocol & Smuggling</h3>
-                                <p style="font-size: 0.8rem; color: var(--text-muted);">Request method, smuggling, and CRLF</p>
-                            </div>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">HTTP Method Enforcement (920100)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">Blocks TRACE, TRACK, DEBUG, and arbitrary verbs</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-920100" checked onchange="toggleRule('920100', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">Header Anomalies (920200)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">Oversized headers, missing Host, multiple lengths</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-920200" checked onchange="toggleRule('920200', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">CRLF Response Splitting (920300)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">%0d%0a header injection and response splitting</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-920300" checked onchange="toggleRule('920300', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">HTTP Request Smuggling (921100)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">CL.TE / TE.CL / TE.TE desync attacks</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-921100" checked onchange="toggleRule('921100', this.checked)"><span class="slider"></span></label>
-                        </div>
-                    </div>
-
-                    <!-- 9. SSRF & RFI -->
-                    <div class="rule-group-card">
-                        <div class="rule-group-header">
-                            <div>
-                                <h3><i class="fa-solid fa-satellite-dish"></i> SSRF & RFI Shield</h3>
-                                <p style="font-size: 0.8rem; color: var(--text-muted);">Internal resource and remote file inclusion</p>
-                            </div>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">SSRF Guard (934100)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">169.254.169.254 metadata, localhost, RFC 1918</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-934100" checked onchange="toggleRule('934100', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">Remote File Inclusion (950100)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">External http:// and ftp:// script includes</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-950100" checked onchange="toggleRule('950100', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">RFI Evasion Defense (950110)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">Stream wrappers and traversal evasion</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-950110" checked onchange="toggleRule('950110', this.checked)"><span class="slider"></span></label>
-                        </div>
-                    </div>
-
-                    <!-- 10. NoSQL / SSTI / XXE -->
-                    <div class="rule-group-card">
-                        <div class="rule-group-header">
-                            <div>
-                                <h3><i class="fa-solid fa-cubes"></i> Modern Injection Vectors</h3>
-                                <p style="font-size: 0.8rem; color: var(--text-muted);">NoSQL, Template engines, and XML entities</p>
-                            </div>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">MongoDB / NoSQL Injection (951100)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">$where, $gt, $ne, $regex query operators</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-951100" checked onchange="toggleRule('951100', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">Redis / CouchDB / ES Injection (951200)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">FLUSHALL, _all_docs, Elasticsearch match_all</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-951200" checked onchange="toggleRule('951200', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">Server-Side Template Injection (952100)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">Jinja2 {{7*7}}, FreeMarker, Twig, Velocity</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-952100" checked onchange="toggleRule('952100', this.checked)"><span class="slider"></span></label>
-                        </div>
-                        <div class="rule-item">
-                            <div>
-                                <strong style="font-size: 0.85rem;">XML External Entity - XXE (953100)</strong>
-                                <p style="font-size: 0.75rem; color: var(--text-muted);">&lt;!DOCTYPE &lt;!ENTITY SYSTEM "file:///etc/passwd"&gt;</p>
-                            </div>
-                            <label class="switch"><input type="checkbox" id="rule-953100" checked onchange="toggleRule('953100', this.checked)"><span class="slider"></span></label>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
             <!-- TAB 5: SYSTEM METRICS -->
             <div id="system" class="tab-content">
                 <h2>System Hardware & Daemon State</h2>
@@ -1117,7 +925,7 @@
                         <div class="terminal-line"><span class="terminal-time">[INIT]</span> Bastion WAF Engine active and bound to SQLite database.</div>
                         <div class="terminal-line"><span class="terminal-time">[INIT]</span> Reverse Proxy listening on 127.0.0.1:8080 -> Forwarding to Bank Portal 127.0.0.1:5000.</div>
                         <div class="terminal-line"><span class="terminal-time">[INIT]</span> Dashboard Management API running on 127.0.0.1:8000.</div>
-                        <div class="terminal-line"><span class="terminal-time">[INIT]</span> 30 OWASP CRS detection rules compiled and active.</div>
+                        <div class="terminal-line"><span class="terminal-time">[INIT]</span> 100+ OWASP CRS detection rules compiled and active.</div>
                     </div>
                 </div>
             </div>
@@ -1176,6 +984,10 @@
     </div>
 
     <script>
+        // State
+        let allRulesCache = [];
+        let activeCategoryFilter = 'ALL';
+
         // Tab Navigation
         function switchTab(tabId, element) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -1217,23 +1029,169 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ rule_id: ruleId, enabled: isChecked })
                 });
+                
+                // Update local cache
+                const rule = allRulesCache.find(r => r.rule_id === ruleId);
+                if (rule) rule.enabled = isChecked;
+                updateRuleCounts();
+
                 appendTerminalLog(`[RULE ENGINE] Rule ID ${ruleId} updated: ${isChecked ? 'ENABLED (BLOCKING)' : 'DISABLED (IGNORED)'}`);
             } catch (err) {
                 console.error('Error toggling rule:', err);
             }
         }
 
+        // Toggle All Rules
+        async function toggleAllRules(enable) {
+            if (!confirm(`Are you sure you want to ${enable ? 'ENABLE' : 'DISABLE'} all detection rules?`)) return;
+            try {
+                for (const r of allRulesCache) {
+                    r.enabled = enable;
+                    const input = document.getElementById(`rule-${r.rule_id}`);
+                    if (input) input.checked = enable;
+                    await fetch('/api/rules', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ rule_id: r.rule_id, enabled: enable })
+                    });
+                }
+                updateRuleCounts();
+                appendTerminalLog(`[RULE ENGINE] Global toggle: ALL rules ${enable ? 'ENABLED' : 'DISABLED'}`);
+            } catch (err) {
+                console.error('Error toggling all rules:', err);
+            }
+        }
+
+        // Category icon mapping
+        function getCategoryIcon(cat) {
+            const icons = {
+                "SQL Injection": "fa-database",
+                "Cross-Site Scripting": "fa-code",
+                "Remote Code Execution": "fa-terminal",
+                "Path Traversal": "fa-folder-open",
+                "SSRF": "fa-satellite-dish",
+                "Scanner Detection": "fa-radar",
+                "HTTP Protocol": "fa-network-wired",
+                "HTTP Smuggling": "fa-arrows-split-up-and-left",
+                "Java & Log4Shell": "fa-java",
+                "PHP Injection": "fa-php",
+                "Remote File Inclusion": "fa-cloud-arrow-down",
+                "NoSQL Injection": "fa-cubes",
+                "Template Injection (SSTI)": "fa-layer-group",
+                "XML External Entity (XXE)": "fa-file-code",
+                "Client-Side & Logic": "fa-shield-halved",
+            };
+            return icons[cat] || "fa-shield";
+        }
+
+        // Render Dynamic Rule Engine List
+        function renderRulesList(rules) {
+            const container = document.getElementById('rules-dynamic-container');
+            if (!container) return;
+
+            if (!rules || rules.length === 0) {
+                container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 40px;">No rules found matching your search.</div>`;
+                return;
+            }
+
+            // Group by category
+            const grouped = {};
+            rules.forEach(r => {
+                const cat = r.category || 'General Security';
+                if (!grouped[cat]) grouped[cat] = [];
+                grouped[cat].push(r);
+            });
+
+            let html = '';
+            for (const [cat, catRules] of Object.entries(grouped)) {
+                const activeInCat = catRules.filter(r => r.enabled).length;
+                const icon = getCategoryIcon(cat);
+                const isBrand = icon.startsWith('fa-java') || icon.startsWith('fa-php');
+                const iconClass = isBrand ? `fa-brands ${icon}` : `fa-solid ${icon}`;
+
+                html += `
+                    <div class="category-section">
+                        <div class="category-header">
+                            <h3><i class="${iconClass}"></i> ${cat} <span class="badge badge-allowed" style="font-size: 0.7rem;">${activeInCat}/${catRules.length} Active</span></h3>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 10px;">
+                            ${catRules.map(r => `
+                                <div class="rule-card">
+                                    <div class="rule-info">
+                                        <div class="rule-title-row">
+                                            <span class="badge badge-rule">${r.rule_id}</span>
+                                            <span class="rule-name">${r.rule_name}</span>
+                                        </div>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="rule-${r.rule_id}" ${r.enabled ? 'checked' : ''} onchange="toggleRule('${r.rule_id}', this.checked)">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+        }
+
+        // Filter and Search Rules
+        function filterRules() {
+            const query = (document.getElementById('rule-search-input')?.value || '').toLowerCase().trim();
+            
+            const filtered = allRulesCache.filter(r => {
+                const matchesCat = activeCategoryFilter === 'ALL' || r.category === activeCategoryFilter;
+                const matchesQuery = !query || 
+                    r.rule_id.toLowerCase().includes(query) || 
+                    r.rule_name.toLowerCase().includes(query) || 
+                    r.category.toLowerCase().includes(query);
+                return matchesCat && matchesQuery;
+            });
+
+            renderRulesList(filtered);
+        }
+
+        // Select Category Filter
+        function selectCategory(category, element) {
+            activeCategoryFilter = category;
+            document.querySelectorAll('#category-pills .pill-btn').forEach(btn => btn.classList.remove('active'));
+            if (element) element.classList.add('active');
+            filterRules();
+        }
+
+        // Update Rule Counters
+        function updateRuleCounts() {
+            const total = allRulesCache.length;
+            const enabledCount = allRulesCache.filter(r => r.enabled).length;
+
+            const totalCountEl = document.getElementById('rules-total-count');
+            if (totalCountEl) totalCountEl.textContent = total;
+
+            const statActiveRulesEl = document.getElementById('stat-active-rules');
+            if (statActiveRulesEl) statActiveRulesEl.textContent = `${enabledCount} / ${total}`;
+
+            const statCoverageEl = document.getElementById('stat-rules-coverage');
+            if (statCoverageEl) {
+                const pct = total > 0 ? Math.round((enabledCount / total) * 100) : 100;
+                statCoverageEl.textContent = `${pct}% Active Defense`;
+            }
+
+            const navCountEl = document.getElementById('nav-rule-count');
+            if (navCountEl) navCountEl.textContent = `${total} Rules`;
+
+            const topbarStatusEl = document.getElementById('topbar-status-text');
+            if (topbarStatusEl) topbarStatusEl.textContent = `WAF Defense: ${enabledCount} Rules Active`;
+        }
+
         // Fetch Rule States
         async function fetchRules() {
             try {
                 const res = await fetch('/api/rules');
-                const rules = await res.json();
-                rules.forEach(r => {
-                    const toggleInput = document.getElementById(`rule-${r.rule_id}`);
-                    if (toggleInput) {
-                        toggleInput.checked = r.enabled;
-                    }
-                });
+                allRulesCache = await res.json();
+                updateRuleCounts();
+                filterRules();
             } catch (err) {
                 console.error('Error fetching rules:', err);
             }
@@ -1331,8 +1289,8 @@
 
         // Fetch Audit Logs
         async function fetchAuditLogs() {
-            const query = document.getElementById('log-search-query').value;
-            const threat = document.getElementById('log-threat-type').value;
+            const query = document.getElementById('log-search-query')?.value || '';
+            const threat = document.getElementById('log-threat-type')?.value || 'All Threat Types';
 
             try {
                 const res = await fetch(`/api/logs?q=${encodeURIComponent(query)}&threat=${encodeURIComponent(threat)}`);
@@ -1444,8 +1402,8 @@
                     maintainAspectRatio: false,
                     plugins: { legend: { labels: { color: '#a3a3a3' } } },
                     scales: {
-                        x: { ticks: { color: '#737373' }, grid: { color: '#262626' } },
-                        y: { ticks: { color: '#737373' }, grid: { color: '#262626' }, beginAtZero: true }
+                        x: { ticks: { color: '#737373' }, grid: { color: '#222222' } },
+                        y: { ticks: { color: '#737373' }, grid: { color: '#222222' }, beginAtZero: true }
                     }
                 }
             });
@@ -1457,8 +1415,8 @@
                     labels: ['SQLi', 'XSS', 'Traversal', 'RCE', 'SSRF', 'Log4Shell', 'Other'],
                     datasets: [{
                         data: [0, 0, 0, 0, 0, 0, 1],
-                        backgroundColor: ['#ffffff', '#d4d4d4', '#a3a3a3', '#737373', '#525252', '#404040', '#262626'],
-                        borderColor: '#0d0d0d',
+                        backgroundColor: ['#ffffff', '#d4d4d4', '#a3a3a3', '#737373', '#525252', '#404040', '#222222'],
+                        borderColor: '#0c0c0c',
                         borderWidth: 2
                     }]
                 },
@@ -1479,7 +1437,6 @@
                 if (stats) {
                     document.getElementById('stat-total-requests').textContent = (stats.total_requests || 0).toLocaleString();
                     document.getElementById('stat-blocked-attacks').textContent = (stats.blocked_attacks || 0).toLocaleString();
-                    document.getElementById('stat-protected-domains').textContent = stats.protected_domains || 0;
                     document.getElementById('stat-avg-latency').textContent = (stats.latency_ms || 0.42) + ' ms';
                 }
 
