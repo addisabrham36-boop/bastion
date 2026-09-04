@@ -1626,6 +1626,9 @@ sudo ufw enable</pre>
         }
 
         // Chart Initialization
+        const THREAT_COLORS = ['#ef4444', '#f59e0b', '#8b5cf6', '#ec4899', '#3b82f6', '#06b6d4', '#10b981'];
+        const THREAT_LABELS = ['SQLi', 'XSS', 'Traversal', 'RCE', 'SSRF', 'Log4Shell', 'Other'];
+
         function buildCharts() {
             const ctx1 = document.getElementById('trafficChart').getContext('2d');
             trafficChart = new Chart(ctx1, {
@@ -1636,29 +1639,48 @@ sudo ufw enable</pre>
                         {
                             label: 'Clean Traffic',
                             data: [0, 0, 0, 0, 0, 0],
-                            borderColor: '#ffffff',
-                            backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                            pointBackgroundColor: '#10b981',
+                            pointBorderColor: '#059669',
+                            pointRadius: 3,
+                            pointHoverRadius: 6,
+                            borderWidth: 2,
                             fill: true,
-                            tension: 0.3
+                            tension: 0.35
                         },
                         {
                             label: 'Threats Blocked',
                             data: [0, 0, 0, 0, 0, 0],
-                            borderColor: '#666666',
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.14)',
+                            pointBackgroundColor: '#ef4444',
+                            pointBorderColor: '#dc2626',
+                            pointRadius: 3,
+                            pointHoverRadius: 6,
+                            borderWidth: 2,
                             borderDash: [5, 5],
-                            backgroundColor: 'rgba(100, 100, 100, 0.05)',
                             fill: true,
-                            tension: 0.3
+                            tension: 0.35
                         }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: '#a3a3a3' } } },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#e5e5e5',
+                                font: { size: 12, weight: '600' },
+                                usePointStyle: true,
+                                boxWidth: 8
+                            }
+                        }
+                    },
                     scales: {
-                        x: { ticks: { color: '#666666' }, grid: { color: '#1a1a1a' } },
-                        y: { ticks: { color: '#666666' }, grid: { color: '#1a1a1a' }, beginAtZero: true }
+                        x: { ticks: { color: '#888888' }, grid: { color: '#1a1a1a' } },
+                        y: { ticks: { color: '#888888' }, grid: { color: '#1a1a1a' }, beginAtZero: true }
                     }
                 }
             });
@@ -1667,18 +1689,31 @@ sudo ufw enable</pre>
             threatChart = new Chart(ctx2, {
                 type: 'doughnut',
                 data: {
-                    labels: ['SQLi', 'XSS', 'Traversal', 'RCE', 'SSRF', 'Log4Shell', 'Other'],
+                    labels: ['No Attacks (100% Clean)'],
                     datasets: [{
-                        data: [0, 0, 0, 0, 0, 0, 1],
-                        backgroundColor: ['#ffffff', '#cccccc', '#999999', '#777777', '#555555', '#333333', '#1c1c1c'],
+                        data: [1],
+                        backgroundColor: ['#10b981'],
                         borderColor: '#0a0a0a',
-                        borderWidth: 2
+                        borderWidth: 2,
+                        hoverOffset: 6
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom', labels: { color: '#a3a3a3' } } }
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#e5e5e5',
+                                font: { size: 11, weight: '500' },
+                                padding: 12,
+                                usePointStyle: true,
+                                boxWidth: 8
+                            }
+                        }
+                    },
+                    cutout: '68%'
                 }
             });
         }
@@ -1734,6 +1769,8 @@ sudo ufw enable</pre>
                     });
                     const totalBlocked = Object.values(counts).reduce((a, b) => a + b, 0);
                     if (totalBlocked > 0) {
+                        threatChart.data.labels = THREAT_LABELS;
+                        threatChart.data.datasets[0].backgroundColor = THREAT_COLORS;
                         threatChart.data.datasets[0].data = [
                             counts['SQLi'],
                             counts['XSS'],
@@ -1744,7 +1781,9 @@ sudo ufw enable</pre>
                             counts['Other']
                         ];
                     } else {
-                        threatChart.data.datasets[0].data = [0, 0, 0, 0, 0, 0, 1];
+                        threatChart.data.labels = ['No Attacks (100% Clean)'];
+                        threatChart.data.datasets[0].backgroundColor = ['#10b981'];
+                        threatChart.data.datasets[0].data = [1];
                     }
                     threatChart.update();
                 }
