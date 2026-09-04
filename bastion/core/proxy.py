@@ -17,7 +17,7 @@ from database.db import get_enabled_rule_ids, get_sites, init_db, log_event
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_UPSTREAM = os.environ.get("BASTION_UPSTREAM", "http://127.0.0.1:5000")
+DEFAULT_UPSTREAM = os.environ.get("BASTION_UPSTREAM", "")
 
 HOP_BY_HOP_HEADERS = {
     "host",
@@ -66,15 +66,22 @@ def resolve_upstream_and_mode(host: str) -> Tuple[str, bool]:
     return DEFAULT_UPSTREAM, True
 
 
-def _make_502_response(accept_header: str, upstream_url: str) -> Response:
+def _make_502_response(accept_header: str, upstream_url: str, host_header: str = "") -> Response:
     """Return friendly HTML page for browser navigation, or JSON for API clients."""
+    target_display = upstream_url if upstream_url else "(No upstream configured)"
+    description = (
+        f"The Bastion WAF Reverse Proxy is actively protecting Port <strong>8080</strong>, but the backend server (<code>{target_display}</code>) is currently offline or unreachable."
+        if upstream_url
+        else f"The Bastion WAF Reverse Proxy received a request for <code>{host_header or 'this domain'}</code>, but no upstream backend server has been mapped to it yet."
+    )
+
     if "text/html" in accept_header:
         html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bastion WAF — Upstream Target Status</title>
+    <title>Bastion WAF — Upstream Status</title>
     <style>
         body {{
             background: #000000;
@@ -125,12 +132,10 @@ def _make_502_response(accept_header: str, upstream_url: str) -> Response:
 <body>
     <div class="card">
         <div class="badge">BASTION WAF ACTIVE</div>
-        <h1>Upstream Target Not Reachable</h1>
+        <h1>Upstream Target Status</h1>
+        <p>{description}</p>
         <p>
-            The Bastion WAF Reverse Proxy is actively protecting Port <strong>8080</strong>, but the configured backend server (<code>{upstream_url}</code>) is currently offline or unreachable.
-        </p>
-        <p>
-            To manage 100+ WAF rules or configure custom upstream routing, open the Security Dashboard:
+            To add your website domain or configure upstream proxy routes, open the Security Dashboard:
         </p>
         <a href="http://127.0.0.1:8000" class="btn">Open WAF Dashboard (Port 8000)</a>
     </div>
@@ -138,7 +143,7 @@ def _make_502_response(accept_header: str, upstream_url: str) -> Response:
 </html>"""
         return HTMLResponse(content=html, status_code=502)
     return Response(
-        content='{"error": "502 Bad Gateway", "message": "Upstream target server is unreachable. Open dashboard at http://127.0.0.1:8000"}',
+        content='{"error": "502 Bad Gateway", "message": "Upstream target server is unreachable or unconfigured. Open dashboard at http://127.0.0.1:8000"}',
         status_code=502,
         media_type="application/json",
     )
@@ -214,6 +219,10 @@ async def waf_proxy(request: Request, path: str):
     forward_headers["x-forwarded-proto"] = request.url.scheme
     forward_headers["x-forwarded-host"] = host_header
 
+    # Check if upstream target is configured
+    if not upstream_target:
+        return _make_502_response(accept_header, "", host_header)
+
     # Build upstream target URL
     upstream_url = f"{upstream_target.rstrip('/')}/{path.lstrip('/')}" if path else f"{upstream_target.rstrip('/')}/"
     if query_string:
@@ -234,7 +243,7 @@ async def waf_proxy(request: Request, path: str):
             timeout=10.0,
         )
     except httpx.ConnectError:
-        return _make_502_response(accept_header, upstream_url)
+        return _make_502_response(accept_header, upstream_url, host_header)
     except httpx.TimeoutException:
         return Response(
             content='{"error": "504 Gateway Timeout", "message": "Upstream target server timed out."}',
