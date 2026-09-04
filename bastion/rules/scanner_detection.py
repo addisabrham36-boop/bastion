@@ -18,12 +18,16 @@ def _match_ua_helper(rule_id: str, compiled_patterns, request) -> Verdict:
 
 
 def _match_path_helper(rule_id: str, compiled_patterns, request) -> Verdict:
-    for field_label, value in request.iter_values():
-        if not value:
-            continue
+    if request.path:
         for pattern, reason in compiled_patterns:
-            if pattern.search(value):
-                return Verdict(blocked=True, rule_id=rule_id, reason=reason, meta={"field": field_label, "matched_value": value[:200]})
+            if pattern.search(request.path):
+                return Verdict(blocked=True, rule_id=rule_id, reason=reason, meta={"field": "path", "matched_value": request.path[:200]})
+    for key, values in (request.query_params or {}).items():
+        for val in values:
+            if val and ("/" in val or "\\" in val or "." in val):
+                for pattern, reason in compiled_patterns:
+                    if pattern.search(val):
+                        return Verdict(blocked=True, rule_id=rule_id, reason=reason, meta={"field": f"query:{key}", "matched_value": val[:200]})
     return Verdict.clean(rule_id)
 
 

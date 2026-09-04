@@ -1,9 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -e
+
 # Move to script directory
 cd "$(dirname "$0")"
 
-# Export package path so relative imports work inside workers
-export PYTHONPATH="$PWD/bastion:$PYTHONPATH"
+# Resolve python interpreter
+if [ -f "venv/bin/python" ]; then
+    PYTHON_EXEC="venv/bin/python"
+elif [ -f ".venv/bin/python" ]; then
+    PYTHON_EXEC=".venv/bin/python"
+else
+    PYTHON_EXEC="python3"
+fi
 
-# Execute uvicorn directly from virtual environment
-./.venv/bin/uvicorn core.proxy:app --app-dir bastion --host 127.0.0.1 --port 8000 --reload
+exec "$PYTHON_EXEC" main.py "$@"

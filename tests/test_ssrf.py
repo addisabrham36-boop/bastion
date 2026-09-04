@@ -59,3 +59,10 @@ def test_ssrf_no_false_positive_on_version_numbers():
     verdict = _match(query_string="info=Installed+Release+10.0.1.5+and+firmware+192.168.1.0")
     assert not verdict.blocked
 
+
+def test_ssrf_no_false_positive_on_browser_referer_or_origin():
+    # Normal browser navigation attaching local referer or origin
+    verdict = _match(headers={"referer": "http://127.0.0.1:8080/dashboard", "origin": "http://localhost:8080"})
+    assert not verdict.blocked
+
+

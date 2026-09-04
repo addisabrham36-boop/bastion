@@ -46,8 +46,18 @@ class HTTPHostIPRule(Rule):
     NAME = "HTTP Host Header Direct IP Target Detection"
 
     def match(self, request) -> Verdict:
-        host = (request.headers or {}).get("host", "")
-        if re.match(r"^\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?$", host) and not (host.startswith("127.") or host.startswith("localhost")):
+        host = (request.headers or {}).get("host", "").strip()
+        host_ip = host.split(":")[0]
+        if re.match(r"^\d{1,3}(?:\.\d{1,3}){3}$", host_ip):
+            # Allow localhost, loopback, zero, and private RFC 1918 subnets
+            if (
+                host_ip.startswith("127.")
+                or host_ip == "0.0.0.0"
+                or host_ip.startswith("10.")
+                or host_ip.startswith("192.168.")
+                or re.match(r"^172\.(?:1[6-9]|2\d|3[01])\.", host_ip)
+            ):
+                return Verdict.clean(self.RULE_ID)
             return Verdict(blocked=True, rule_id=self.RULE_ID, reason="Direct public IP Host header probing", meta={"host": host})
         return Verdict.clean(self.RULE_ID)
 
@@ -117,7 +127,7 @@ class CRLFInjectionRule(Rule):
 
     def match(self, request) -> Verdict:
         for field_label, value in request.iter_values():
-            if not value:
+            if not value or field_label == "body":
                 continue
             for pattern, reason in _COMPILED_CRLF:
                 if pattern.search(value):
@@ -139,7 +149,7 @@ class CRLFHeaderInjectionRule(Rule):
 
     def match(self, request) -> Verdict:
         for field_label, value in request.iter_values():
-            if not value:
+            if not value or field_label == "body":
                 continue
             for pattern, reason in _COMPILED_CRLF_HDR:
                 if pattern.search(value):

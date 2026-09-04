@@ -102,3 +102,10 @@ def test_crlf_clean_allowed():
     req = _make_request(query_string="redirect=/dashboard&msg=hello")
     verdict = CRLFInjectionRule().match(req)
     assert not verdict.blocked
+
+
+def test_crlf_multiline_body_allowed():
+    req = _make_request(method="POST", body=b"line1\r\nline2\r\nline3", headers={"content-type": "text/plain"})
+    verdict = CRLFInjectionRule().match(req)
+    assert not verdict.blocked
+

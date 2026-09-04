@@ -11,6 +11,9 @@ def _match_helper(rule_id: str, compiled_patterns, request) -> Verdict:
     for field_label, value in request.iter_values():
         if not value:
             continue
+        # Referer and Origin headers naturally contain the site origin (e.g. localhost) in normal browsing
+        if field_label in ("header:referer", "header:origin"):
+            continue
         for pattern, reason in compiled_patterns:
             if pattern.search(value):
                 return Verdict(blocked=True, rule_id=rule_id, reason=reason, meta={"field": field_label, "matched_value": value[:200]})

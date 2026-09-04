@@ -49,11 +49,17 @@ def resolve_upstream_and_mode(host: str) -> Tuple[str, bool]:
     """Resolve upstream target and defense mode for the given host."""
     try:
         sites = get_sites()
+        current_host = host.lower().strip()
+        host_no_port = current_host.split(":")[0]
         for site in sites:
-            domain = site["domain"].lower()
-            current_host = host.lower()
-            if domain in current_host or current_host in domain:
-                target = site["upstream"] if site["upstream"].startswith("http") else f"http://{site['upstream']}"
+            domain = (site.get("domain") or "").lower().strip()
+            if not domain:
+                continue
+            domain_no_port = domain.split(":")[0]
+            # Match exact host:port or domain name without port
+            if domain == current_host or domain_no_port == host_no_port:
+                upstream = site.get("upstream", "")
+                target = upstream if upstream.startswith("http") else f"http://{upstream}"
                 return target, bool(site.get("defense_mode", True))
     except Exception:
         pass

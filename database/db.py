@@ -2,6 +2,7 @@
 SQLite database storage for WAF security events, rules, and protected sites.
 """
 
+import os
 from datetime import datetime, timezone
 import io
 import csv
@@ -9,17 +10,25 @@ from pathlib import Path
 import sqlite3
 from typing import Any, Dict, List, Optional, Set
 
-DB_PATH = Path(__file__).resolve().parent / "waf.db"
+DEFAULT_DB_PATH = Path(__file__).resolve().parent / "waf.db"
+
+
+def get_db_path() -> Path:
+    env_path = os.environ.get("BASTION_DB_PATH")
+    if env_path:
+        return Path(env_path)
+    return DEFAULT_DB_PATH
 
 
 def get_connection() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+    db_path = get_db_path()
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def init_db():
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with get_connection() as conn:
         conn.execute(
             """
@@ -99,14 +108,6 @@ def init_db():
         except Exception as e:
             pass
 
-
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM protected_sites")
-        count_row = cursor.fetchone()
-        if count_row and count_row[0] == 0:
-            conn.execute(
-                "INSERT INTO protected_sites (id, domain, upstream, ssl_status, defense_mode) VALUES (1, '127.0.0.1:8080', '127.0.0.1:5000', 'Active', 1)"
-            )
         conn.commit()
 
 
