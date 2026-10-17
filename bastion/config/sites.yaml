@@ -1,0 +1,29 @@
+sites:
+  - id: demo-site
+    hostnames:
+      - app.example.test
+      - 127.0.0.1
+      - localhost
+      - testserver
+    upstream_origin: http://127.0.0.1:5000
+    verify_upstream_tls: true
+    mode: detection
+    allowed_methods:
+      - GET
+      - HEAD
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - OPTIONS
+    max_body_bytes: 1048576
+    max_path_bytes: 8192
+    rule_profile: default
+    score_thresholds:
+      log: 20
+      block: 50
+    rate_limits:
+      default:
+        requests: 60
+        window_seconds: 60
+    unsupported_body_policy: allow_and_log

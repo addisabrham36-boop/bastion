@@ -1,0 +1,67 @@
+services:
+  bastion:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9000:9000"
+    environment:
+      - BASTION_ENV=production
+      - BASTION_LOG_LEVEL=INFO
+      - BASTION_LISTEN_HOST=0.0.0.0
+      - BASTION_LISTEN_PORT=9000
+      - REDIS_URL=redis://redis:6379/0
+      - OPENSEARCH_URL=http://opensearch:9200
+      - BASTION_SITE_CONFIG=bastion/config/sites.yaml
+    networks:
+      - bastion_internal
+    depends_on:
+      - redis
+      - opensearch
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redis_data:/data
+    networks:
+      - bastion_internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  opensearch:
+    image: opensearchproject/opensearch:2.14.0
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    networks:
+      - bastion_internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  demo-upstream:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "-m", "uvicorn", "test_app:app", "--host", "0.0.0.0", "--port", "5000"]
+    restart: unless-stopped
+    networks:
+      - bastion_internal
+
+networks:
+  bastion_internal:
+    driver: bridge
+
+volumes:
+  redis_data:
+  opensearch_data:

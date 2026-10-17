@@ -1,0 +1,19 @@
+# Bastion-TIP Caddy Edge Reverse Proxy Configuration
+{
+    admin off
+}
+
+app.example.test:80 {
+    # Edge request limits
+    request_body {
+        max_size 10MB
+    }
+
+    # Reverse proxy strictly to Bastion Gateway
+    reverse_proxy 127.0.0.1:9000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}

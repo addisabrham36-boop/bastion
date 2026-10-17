@@ -1,5 +1,7 @@
 """
 Bastion WAF Management REST API & Dashboard Server.
+Backed primarily by OpenSearch for live telemetry, events, and audit logs,
+with graceful fallback to SQLite for local development.
 """
 
 import os
@@ -14,6 +16,8 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from bastion.settings import get_settings
+from bastion.storage.opensearch import OpenSearchEventRepository
 from database.db import (
     add_site,
     clear_logs,
@@ -26,10 +30,19 @@ from database.db import (
     get_stats,
     init_db,
     set_rule_state,
+    set_all_rules_state,
     set_site_defense,
 )
 
 init_db()
+
+settings = get_settings()
+opensearch_repo = OpenSearchEventRepository(
+    url=settings.opensearch_url,
+    username=settings.opensearch_username,
+    password=settings.opensearch_password,
+    verify_tls=settings.opensearch_verify_tls,
+)
 
 app = FastAPI(title="Bastion WAF API & Dashboard Server")
 
@@ -58,16 +71,34 @@ class SiteToggleRequest(BaseModel):
 
 @app.get("/api/stats")
 def stats():
+    # 1. Primary: Query OpenSearch for aggregated statistics
+    if opensearch_repo.is_available:
+        os_stats = opensearch_repo.get_stats()
+        if os_stats:
+            return os_stats
+    # 2. Fallback: SQLite
     return get_stats()
 
 
 @app.get("/api/events")
 def events():
+    # 1. Primary: Query OpenSearch for recent events
+    if opensearch_repo.is_available:
+        os_events = opensearch_repo.get_recent_events(limit=50)
+        if os_events is not None:
+            return os_events
+    # 2. Fallback: SQLite
     return get_recent_events()
 
 
 @app.get("/api/logs")
 def logs(q: str = Query("", alias="q"), threat: str = Query("All Threat Types", alias="threat")):
+    # 1. Primary: Search OpenSearch logs
+    if opensearch_repo.is_available:
+        os_logs = opensearch_repo.search_logs(query_str=q, threat_type=threat)
+        if os_logs is not None:
+            return os_logs
+    # 2. Fallback: SQLite
     return get_logs(query=q, threat=threat)
 
 
@@ -90,6 +121,17 @@ def export_csv():
 @app.get("/api/rules")
 def list_rules():
     return get_rules()
+
+
+class BulkRuleToggleRequest(BaseModel):
+    enabled: bool
+    category: Optional[str] = None
+
+
+@app.post("/api/rules/bulk")
+def update_all_rules(req: BulkRuleToggleRequest):
+    set_all_rules_state(req.enabled, req.category)
+    return {"status": "success", "enabled": req.enabled, "category": req.category or "ALL"}
 
 
 @app.post("/api/rules")
@@ -122,7 +164,6 @@ def remove_site(site_id: int):
 
 @app.get("/api/system")
 def system_metrics():
-    # Attempt to read live memory / CPU info
     cpu_percent = 4.8
     ram_usage_mb = 138.5
     total_ram_gb = 8.0
@@ -133,7 +174,6 @@ def system_metrics():
         ram_usage_mb = round(mem.used / (1024 * 1024), 1)
         total_ram_gb = round(mem.total / (1024 * 1024 * 1024), 1)
     except Exception:
-        # Fallback if psutil not installed in current env
         pass
 
     uptime_sec = int(time.time() - START_TIME)
@@ -147,31 +187,18 @@ def system_metrics():
         "ram_total_gb": total_ram_gb,
         "ram_percent": round((ram_usage_mb / (total_ram_gb * 1024)) * 100, 1) if total_ram_gb else 15.0,
         "uptime": uptime_str,
-        "uptime_seconds": uptime_sec,
-        "platform": platform.platform(),
-        "python_version": platform.python_version(),
-        "proxy_status": "ONLINE (Port 8080)",
-        "engine_state": "ACTIVE BLOCKING",
+        "os": f"{platform.system()} {platform.release()}",
+        "python": platform.python_version(),
+        "opensearch_connected": opensearch_repo.is_available,
     }
 
 
-dashboard_dir = Path(__file__).resolve().parent.parent / "dashboard"
-index_html_path = dashboard_dir / "index.html"
+# Mount static frontend
+DASHBOARD_PATH = Path(__file__).resolve().parent.parent / "dashboard" / "index.html"
 
 
-@app.get("/")
-def serve_dashboard():
-    if index_html_path.exists():
-        with open(index_html_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        return Response(
-            content=content,
-            media_type="text/html",
-            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"},
-        )
-    return Response(content="Dashboard file not found.", status_code=404)
-
-
-if dashboard_dir.exists():
-    app.mount("/static", StaticFiles(directory=str(dashboard_dir)), name="static")
-
+@app.get("/", response_class=FileResponse)
+def index():
+    if DASHBOARD_PATH.exists():
+        return FileResponse(DASHBOARD_PATH)
+    return PlainTextResponse("Bastion SOC Dashboard is ready. Frontend file index.html is missing.")

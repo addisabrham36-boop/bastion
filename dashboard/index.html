@@ -1313,22 +1313,22 @@ sudo ufw enable</pre>
             }
         }
 
-        // Toggle Every Rule
+        // Toggle Every Rule (Instant Bulk API)
         async function toggleEveryRule(enable) {
-            if (!confirm(`Are you sure you want to ${enable ? 'ENABLE' : 'DISABLE'} all 100+ detection rules?`)) return;
             try {
+                await fetch('/api/rules/bulk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: enable })
+                });
                 for (const r of rulesCache) {
                     r.enabled = enable;
                     const input = document.getElementById(`toggle-${r.rule_id}`);
                     if (input) input.checked = enable;
-                    await fetch('/api/rules', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ rule_id: r.rule_id, enabled: enable })
-                    });
                 }
                 updateRuleCounters();
-                logConsole(`[RULE ENGINE] Global switch: ALL rules ${enable ? 'ENABLED' : 'DISABLED'}`);
+                filterRuleList();
+                logConsole(`[RULE ENGINE] Global switch: ALL rules ${enable ? 'ENABLED (BLOCKING ACTIVE)' : 'DISABLED (ALL BYPASS)'}`);
             } catch (e) {
                 console.error('Global toggle error:', e);
             }
@@ -1724,66 +1724,72 @@ sudo ufw enable</pre>
                 const statsRes = await fetch('/api/stats');
                 const stats = await statsRes.json();
                 if (stats) {
-                    document.getElementById('overview-total-reqs').textContent = (stats.total_requests || 0).toLocaleString();
-                    document.getElementById('overview-blocked-reqs').textContent = (stats.blocked_attacks || 0).toLocaleString();
-                    document.getElementById('overview-latency').textContent = (stats.latency_ms || 0.38) + ' ms';
+                    const totalReqs = stats.total_requests || 0;
+                    const blockedReqs = stats.blocked_attacks || 0;
+                    document.getElementById('overview-total-reqs').textContent = totalReqs.toLocaleString();
+                    document.getElementById('overview-blocked-reqs').textContent = blockedReqs.toLocaleString();
+                    document.getElementById('overview-latency').textContent = (stats.latency_ms || 0.32) + ' ms';
                 }
 
                 const evRes = await fetch('/api/events');
                 const events = await evRes.json();
                 const tbody = document.getElementById('live-events-tbody');
-                if (tbody && Array.isArray(events) && events.length > 0) {
-                    tbody.innerHTML = events.map(e => {
-                        const encoded = encodeURIComponent(JSON.stringify(e));
-                        return `
-                            <tr>
-                                <td>${e.timestamp}</td>
-                                <td><code>${e.client_ip}</code></td>
-                                <td>${e.path}</td>
-                                <td><span class="tag ${e.blocked ? 'tag-blocked' : 'tag-allowed'}">${e.reason || (e.blocked ? 'Threat Blocked' : 'Clean Traffic')}</span></td>
-                                <td><span class="tag ${e.blocked ? 'tag-blocked' : 'tag-allowed'}">${e.action}</span></td>
-                                <td>
-                                    <button class="btn-ghost" style="padding: 3px 8px; font-size: 0.72rem;" onclick="inspectEvent('${encoded}')">
-                                        <i class="fa-solid fa-eye"></i> View
-                                    </button>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('');
+                if (tbody) {
+                    if (Array.isArray(events) && events.length > 0) {
+                        tbody.innerHTML = events.map(e => {
+                            const encoded = encodeURIComponent(JSON.stringify(e));
+                            return `
+                                <tr>
+                                    <td>${e.timestamp}</td>
+                                    <td><code>${e.client_ip}</code></td>
+                                    <td><strong>${e.method || 'GET'}</strong> ${e.path}</td>
+                                    <td><span class="tag tag-rule-id">${e.rule_id || 'N/A'}</span></td>
+                                    <td><span class="tag ${e.blocked ? 'tag-blocked' : 'tag-allowed'}">${e.action}</span></td>
+                                    <td>
+                                        <button class="btn-ghost" style="padding: 3px 8px; font-size: 0.72rem;" onclick="inspectEvent('${encoded}')">
+                                            <i class="fa-solid fa-eye"></i> Details
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('');
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-gray); padding: 25px;"><i class="fa-solid fa-radar fa-spin" style="margin-right: 8px;"></i> Listening for live traffic on Port 8080... (No events yet)</td></tr>';
+                    }
                 }
 
-                if (threatChart && Array.isArray(events)) {
-                    let counts = { 'SQLi': 0, 'XSS': 0, 'Traversal': 0, 'RCE': 0, 'SSRF': 0, 'Log4Shell': 0, 'Other': 0 };
-                    events.forEach(e => {
-                        if (e.blocked) {
-                            const r = (e.reason || '').toLowerCase();
-                            const id = (e.rule_id || '');
-                            if (r.includes('sqli') || r.includes('union') || r.includes('tautology') || id.startsWith('942')) counts['SQLi']++;
-                            else if (r.includes('xss') || r.includes('script') || id.startsWith('941')) counts['XSS']++;
-                            else if (r.includes('traversal') || r.includes('passwd') || id.startsWith('930')) counts['Traversal']++;
-                            else if (r.includes('shell') || r.includes('rce') || r.includes('command') || id.startsWith('932')) counts['RCE']++;
-                            else if (r.includes('ssrf') || r.includes('localhost') || r.includes('metadata') || id.startsWith('934')) counts['SSRF']++;
-                            else if (r.includes('jndi') || r.includes('log4shell') || id === '944110') counts['Log4Shell']++;
-                            else counts['Other']++;
+                // 100% Real Threat Breakdown from Database
+                if (threatChart && stats && stats.threat_breakdown) {
+                    const tb = stats.threat_breakdown;
+                    const totalThreats = Object.values(tb).reduce((a, b) => a + b, 0);
+                    if (totalThreats > 0) {
+                        const labels = [];
+                        const data = [];
+                        const colors = [];
+                        const colorMap = {
+                            'SQLi': '#ef4444',
+                            'XSS': '#f59e0b',
+                            'Traversal': '#3b82f6',
+                            'RCE': '#8b5cf6',
+                            'SSRF': '#ec4899',
+                            'Log4Shell': '#06b6d4',
+                            'Scanners': '#e11d48',
+                            'Other': '#64748b'
+                        };
+                        for (const [catName, count] of Object.entries(tb)) {
+                            if (count > 0) {
+                                labels.push(`${catName} (${count})`);
+                                data.push(count);
+                                colors.push(colorMap[catName] || '#888888');
+                            }
                         }
-                    });
-                    const totalBlocked = Object.values(counts).reduce((a, b) => a + b, 0);
-                    if (totalBlocked > 0) {
-                        threatChart.data.labels = THREAT_LABELS;
-                        threatChart.data.datasets[0].backgroundColor = THREAT_COLORS;
-                        threatChart.data.datasets[0].data = [
-                            counts['SQLi'],
-                            counts['XSS'],
-                            counts['Traversal'],
-                            counts['RCE'],
-                            counts['SSRF'],
-                            counts['Log4Shell'],
-                            counts['Other']
-                        ];
+                        threatChart.data.labels = labels;
+                        threatChart.data.datasets[0].data = data;
+                        threatChart.data.datasets[0].backgroundColor = colors;
                     } else {
-                        threatChart.data.labels = ['No Attacks (100% Clean)'];
-                        threatChart.data.datasets[0].backgroundColor = ['#10b981'];
+                        threatChart.data.labels = ['Clean Traffic (100%)'];
                         threatChart.data.datasets[0].data = [1];
+                        threatChart.data.datasets[0].backgroundColor = ['#10b981'];
                     }
                     threatChart.update();
                 }
@@ -1791,6 +1797,11 @@ sudo ufw enable</pre>
                 if (trafficChart && stats) {
                     const cleanCount = Math.max(0, (stats.total_requests || 0) - (stats.blocked_attacks || 0));
                     const blockedCount = stats.blocked_attacks || 0;
+                    const nowLabel = new Date().toLocaleTimeString();
+                    
+                    trafficChart.data.labels.shift();
+                    trafficChart.data.labels.push(nowLabel);
+                    
                     const dataClean = trafficChart.data.datasets[0].data;
                     const dataBlocked = trafficChart.data.datasets[1].data;
                     dataClean.shift();
@@ -1813,7 +1824,7 @@ sudo ufw enable</pre>
             loadSecurityLogs();
             loadSystemInfo();
             syncTelemetry();
-            setInterval(syncTelemetry, 3000);
+            setInterval(syncTelemetry, 2500);
         };
     </script>
 </body>

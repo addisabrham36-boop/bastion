@@ -17,7 +17,7 @@ from database.db import get_enabled_rule_ids, get_sites, init_db, log_event
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_UPSTREAM = os.environ.get("BASTION_UPSTREAM", "")
+DEFAULT_UPSTREAM = os.environ.get("BASTION_UPSTREAM", "http://127.0.0.1:5000")
 
 HOP_BY_HOP_HEADERS = {
     "host",
@@ -51,19 +51,171 @@ def resolve_upstream_and_mode(host: str) -> Tuple[str, bool]:
         sites = get_sites()
         current_host = host.lower().strip()
         host_no_port = current_host.split(":")[0]
+
+        # Pass 1: Exact host:port match
+        for site in sites:
+            domain = (site.get("domain") or "").lower().strip()
+            if domain == current_host:
+                upstream = site.get("upstream", "")
+                target = upstream if upstream.startswith("http") else f"http://{upstream}"
+                return target, bool(site.get("defense_mode", True))
+
+        # Pass 2: Exact domain name match without port
         for site in sites:
             domain = (site.get("domain") or "").lower().strip()
             if not domain:
                 continue
             domain_no_port = domain.split(":")[0]
-            # Match exact host:port or domain name without port
-            if domain == current_host or domain_no_port == host_no_port:
+            if domain_no_port == host_no_port:
                 upstream = site.get("upstream", "")
                 target = upstream if upstream.startswith("http") else f"http://{upstream}"
                 return target, bool(site.get("defense_mode", True))
+
+        # Pass 3: Loopback alias match
+        if host_no_port in ("127.0.0.1", "localhost"):
+            for site in sites:
+                domain = (site.get("domain") or "").lower().strip()
+                domain_no_port = domain.split(":")[0]
+                if domain_no_port in ("127.0.0.1", "localhost"):
+                    upstream = site.get("upstream", "")
+                    target = upstream if upstream.startswith("http") else f"http://{upstream}"
+                    return target, bool(site.get("defense_mode", True))
     except Exception:
         pass
     return DEFAULT_UPSTREAM, True
+
+
+def _make_403_response(accept_header: str, rule_id: str, reason: str, client_ip: str, path: str) -> Response:
+    """Return high-impact WAF intercept HTML page for browsers, or JSON for API clients."""
+    if "text/html" in accept_header:
+        html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>403 Forbidden — Bastion WAF Attack Intercept</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {{
+            background: #000000;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }}
+        .card {{
+            background: #0a0a0a;
+            border: 1px solid #ef4444;
+            border-radius: 12px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(239, 68, 68, 0.25);
+        }}
+        .badge {{
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #ef4444;
+            color: #ffffff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }}
+        h1 {{ font-size: 1.6rem; margin: 0 0 12px 0; color: #ffffff; }}
+        p.subtitle {{ font-size: 0.95rem; color: #a1a1aa; line-height: 1.5; margin: 0 0 25px 0; }}
+        .details-box {{
+            background: #121212;
+            border: 1px solid #27272a;
+            border-radius: 8px;
+            padding: 16px 20px;
+            text-align: left;
+            margin-bottom: 25px;
+            font-size: 0.85rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }}
+        .detail-row {{ display: flex; justify-content: space-between; border-bottom: 1px solid #1f1f23; padding-bottom: 6px; }}
+        .detail-row:last-child {{ border-bottom: none; padding-bottom: 0; }}
+        .detail-label {{ color: #71717a; font-weight: 600; }}
+        .detail-value {{ color: #ffffff; font-family: monospace; font-weight: 700; }}
+        .btn-group {{ display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }}
+        .btn {{
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #ffffff;
+            color: #000000;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 700;
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: background 0.15s;
+        }}
+        .btn:hover {{ background: #d4d4d4; }}
+        .btn-secondary {{
+            background: transparent;
+            color: #ffffff;
+            border: 1px solid #3f3f46;
+        }}
+        .btn-secondary:hover {{ background: #18181b; border-color: #71717a; }}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="badge"><i class="fa-solid fa-shield-halved"></i> Attack Intercepted (403 Forbidden)</div>
+        <h1>Request Blocked by Bastion WAF</h1>
+        <p class="subtitle">
+            The Bastion Web Application Firewall inspected your incoming HTTP request and detected a malicious attack signature. The request was blocked inline and prevented from reaching the backend banking system.
+        </p>
+        <div class="details-box">
+            <div class="detail-row">
+                <span class="detail-label">Triggered Rule ID:</span>
+                <span class="detail-value" style="color: #f87171;">{rule_id}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Detection Reason:</span>
+                <span class="detail-value">{reason}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Client IP Address:</span>
+                <span class="detail-value">{client_ip}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Target URI:</span>
+                <span class="detail-value">{path}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">WAF Action:</span>
+                <span class="detail-value" style="color: #ef4444;">403 FORBIDDEN INTERCEPT</span>
+            </div>
+        </div>
+        <div class="btn-group">
+            <a href="http://127.0.0.1:8080" class="btn"><i class="fa-solid fa-arrow-left"></i> Return to Bank Portal</a>
+            <a href="http://127.0.0.1:8000" target="_blank" class="btn btn-secondary"><i class="fa-solid fa-chart-line"></i> Open SOC Dashboard (Port 8000)</a>
+        </div>
+    </div>
+</body>
+</html>"""
+        return HTMLResponse(content=html, status_code=403)
+
+    return Response(
+        content=f'{{"blocked": true, "rule": "{rule_id}", "reason": "{reason}", "status": 403}}',
+        status_code=403,
+        media_type="application/json",
+    )
 
 
 def _make_502_response(accept_header: str, upstream_url: str, host_header: str = "") -> Response:
@@ -207,10 +359,12 @@ async def waf_proxy(request: Request, path: str):
 
     # Intercept attack vector if blocking is active
     if is_blocked:
-        return Response(
-            content=f'{{"blocked": true, "rule": "{verdict.rule_id}", "reason": "{verdict.reason}", "status": 403}}',
-            status_code=403,
-            media_type="application/json",
+        return _make_403_response(
+            accept_header=accept_header,
+            rule_id=verdict.rule_id,
+            reason=verdict.reason,
+            client_ip=client_ip,
+            path=target_path,
         )
 
     # Prepare forwarding headers
@@ -218,6 +372,7 @@ async def waf_proxy(request: Request, path: str):
     forward_headers["x-forwarded-for"] = client_ip
     forward_headers["x-forwarded-proto"] = request.url.scheme
     forward_headers["x-forwarded-host"] = host_header
+    forward_headers["x-bastion-proxy"] = "1"
 
     # Check if upstream target is configured
     if not upstream_target:

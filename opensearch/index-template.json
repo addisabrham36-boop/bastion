@@ -1,0 +1,71 @@
+{
+  "index_patterns": ["bastion-events-v1-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    },
+    "mappings": {
+      "dynamic": "strict",
+      "properties": {
+        "schema_version": { "type": "integer" },
+        "event_id": { "type": "keyword" },
+        "@timestamp": { "type": "date" },
+        "request_id": { "type": "keyword" },
+        "site": {
+          "properties": {
+            "id": { "type": "keyword" },
+            "host": { "type": "keyword" }
+          }
+        },
+        "client": {
+          "properties": {
+            "ip": { "type": "ip" },
+            "ip_source": { "type": "keyword" },
+            "user_agent": { "type": "keyword", "ignore_above": 512 }
+          }
+        },
+        "http": {
+          "properties": {
+            "method": { "type": "keyword" },
+            "path": { "type": "keyword", "ignore_above": 1024 },
+            "status_code": { "type": "integer" },
+            "upstream_status_code": { "type": "integer" }
+          }
+        },
+        "decision": {
+          "properties": {
+            "mode": { "type": "keyword" },
+            "would_action": { "type": "keyword" },
+            "enforced_action": { "type": "keyword" },
+            "threat_score": { "type": "integer" },
+            "reason_codes": { "type": "keyword" }
+          }
+        },
+        "detections": {
+          "type": "nested",
+          "properties": {
+            "rule_id": { "type": "keyword" },
+            "category": { "type": "keyword" },
+            "severity": { "type": "keyword" },
+            "confidence": { "type": "float" },
+            "score": { "type": "integer" }
+          }
+        },
+        "timing": {
+          "properties": {
+            "total_ms": { "type": "float" },
+            "inspection_ms": { "type": "float" }
+          }
+        },
+        "model": {
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "name": { "type": "keyword" },
+            "version": { "type": "keyword" }
+          }
+        }
+      }
+    }
+  }
+}

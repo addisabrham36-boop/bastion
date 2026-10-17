@@ -1,0 +1,46 @@
+from flask import Flask, request, render_template_string
+import subprocess
+
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return """
+    <h2>Bastion WAF - Isolated Target Application</h2>
+    <ul>
+        <li><a href="/search?q=admin' OR '1'='1">SQL Injection Vector</a></li>
+        <li><a href="/comment?msg=<script>alert('XSS')</script>">Reflected XSS Vector</a></li>
+        <li><a href="/exec?cmd=id">RCE Command Injection Vector</a></li>
+        <li><a href="/file?name=../../../../etc/passwd">LFI / Path Traversal Vector</a></li>
+    </ul>
+    """
+
+@app.route('/search')
+def search():
+    query = request.args.get('q', '')
+    return f"<h3>Database Query:</h3><code>SELECT * FROM users WHERE username = '{query}'</code>"
+
+@app.route('/comment')
+def comment():
+    msg = request.args.get('msg', '')
+    return render_template_string(f"<h3>Comment:</h3><div>{msg}</div>")
+
+@app.route('/exec')
+def exec_cmd():
+    cmd = request.args.get('cmd', '')
+    if not cmd:
+        return "No command provided", 400
+    return f"<h3>Output:</h3><pre>{subprocess.getoutput(cmd)}</pre>"
+
+@app.route('/file')
+def read_file():
+    filename = request.args.get('name', '')
+    try:
+        with open(filename, 'r') as f:
+            return f"<h3>File Content:</h3><pre>{f.read()}</pre>"
+    except Exception as e:
+        return f"Error: {str(e)}", 404
+
+if __name__ == '__main__':
+    # Listens strictly on localhost port 5000
+    app.run(host='127.0.0.1', port=5000, debug=True)
