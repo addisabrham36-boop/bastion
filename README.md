@@ -1,4 +1,4 @@
-# Bastion WAF — INSA Educational Web Application Firewall
+# Bastion WAF 
 
 Bastion is a reverse-proxy Web Application Firewall (WAF) and Threat Intelligence Platform built as an educational project at the Institute of Software and Advanced Technology (INSA). It is designed to demonstrate real-world WAF architecture including rule-based traffic inspection, scored threat detection, IOC enrichment, rate limiting, and live telemetry.
 
