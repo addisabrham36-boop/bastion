@@ -43,7 +43,8 @@ def init_db():
                 rule_id TEXT,
                 reason TEXT,
                 action TEXT,
-                payload_snippet TEXT DEFAULT ''
+                payload_snippet TEXT DEFAULT '',
+                duration_ms REAL DEFAULT NULL
             )
             """
         )
@@ -55,6 +56,14 @@ def init_db():
             conn.execute("ALTER TABLE events ADD COLUMN action TEXT")
         if "payload_snippet" not in existing_cols:
             conn.execute("ALTER TABLE events ADD COLUMN payload_snippet TEXT DEFAULT ''")
+        if "duration_ms" not in existing_cols:
+            conn.execute("ALTER TABLE events ADD COLUMN duration_ms REAL DEFAULT NULL")
+
+        # Add indexes for control API query performance
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_events_blocked ON events(blocked)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_events_rule_id ON events(rule_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_events_action ON events(action)")
 
         conn.execute(
             """
@@ -81,17 +90,28 @@ def init_db():
         # Seed protected sites if none exist
         cursor.execute("SELECT COUNT(*) FROM protected_sites")
         if cursor.fetchone()[0] == 0:
-            conn.execute(
-                "INSERT OR REPLACE INTO protected_sites (domain, upstream, ssl_status, defense_mode) VALUES ('127.0.0.1:8080', 'http://127.0.0.1:5000', 'Active', 1)"
-            )
-            conn.execute(
-                "INSERT OR REPLACE INTO protected_sites (domain, upstream, ssl_status, defense_mode) VALUES ('localhost:8080', 'http://127.0.0.1:5000', 'Active', 1)"
-            )
+            default_sites = [
+                ("127.0.0.1:8080", "https://abrham-addis-portfolio.netlify.app", "Active", 0),
+                ("localhost:8080", "https://abrham-addis-portfolio.netlify.app", "Active", 0),
+                ("127.0.0.1", "https://abrham-addis-portfolio.netlify.app", "Active", 0),
+                ("localhost", "https://abrham-addis-portfolio.netlify.app", "Active", 0),
+                ("abrham-addis-portfolio.netlify.app", "https://abrham-addis-portfolio.netlify.app", "Active", 0),
+            ]
+            for domain, upstream, ssl_status, defense_mode in default_sites:
+                conn.execute(
+                    "INSERT OR REPLACE INTO protected_sites (domain, upstream, ssl_status, defense_mode) VALUES (?, ?, ?, ?)",
+                    (domain, upstream, ssl_status, defense_mode),
+                )
 
-        # Auto-seed all discovered rules
+        # Remove obsolete orphan rule 942300 if present
+        conn.execute("DELETE FROM waf_rules WHERE rule_id = '942300'")
+
+        # Auto-seed all discovered rules and native registry rules
         try:
             from bastion.core.engine import discover_rules
-            discovered = discover_rules()
+            from bastion.rules.registry import RuleRegistry
+
+            reg = RuleRegistry.create_default()
             cat_map = {
                 "913": "Scanner Detection",
                 "920": "HTTP Protocol",
@@ -108,13 +128,50 @@ def init_db():
                 "952": "Template Injection (SSTI)",
                 "953": "XML External Entity (XXE)",
                 "960": "Client-Side & Logic",
+                "973": "API Policy",
+                "975": "Resource Exhaustion",
+                "976": "Multipart Upload",
+                "977": "Authentication Abuse",
+                "978": "Parameter Pollution",
+                "979": "Security Headers",
+                "980": "Host Header Injection",
             }
-            for rule in discovered:
-                cat = cat_map.get(rule.RULE_ID[:3], "General Security")
+
+            for rule_obj in reg.list_rules():
+                rid = rule_obj.id
+                rname = getattr(rule_obj, "name", "")
+                cat_val = getattr(getattr(rule_obj, "category", None), "value", "General Security")
+                if rid.isdigit() and len(rid) >= 3:
+                    cat_val = cat_map.get(rid[:3], cat_val.capitalize())
+                elif rid.startswith("PAYLOAD_"):
+                    rname = rname or f"Native Scored Rule {rid}"
+                    cat_val = "Native Scored Rules"
+                elif rid.startswith("BLOCKLIST_"):
+                    rname = rname or f"Reputation Blocklist {rid}"
+                    cat_val = "Reputation"
+
                 conn.execute(
                     "INSERT OR IGNORE INTO waf_rules (rule_id, rule_name, category, enabled) VALUES (?, ?, ?, 1)",
-                    (rule.RULE_ID, rule.NAME, cat),
+                    (rid, rname or rid, cat_val),
                 )
+
+            # Register Threat Intelligence IOC Rules
+            ioc_rules = [
+                ("IOC_IP_THREAT", "Threat Intelligence IP Indicator Match", "Threat Intelligence"),
+                ("IOC_DOMAIN_THREAT", "Threat Intelligence Domain Indicator Match", "Threat Intelligence"),
+                ("IOC_PATH_THREAT", "Threat Intelligence URI / Path Indicator Match", "Threat Intelligence"),
+            ]
+            for rid, rname, rcat in ioc_rules:
+                conn.execute(
+                    "INSERT OR IGNORE INTO waf_rules (rule_id, rule_name, category, enabled) VALUES (?, ?, ?, 1)",
+                    (rid, rname, rcat),
+                )
+
+            # Register Rate Limit Rule
+            conn.execute(
+                "INSERT OR IGNORE INTO waf_rules (rule_id, rule_name, category, enabled) VALUES (?, ?, ?, 1)",
+                ("RATE_LIMIT_EXCEEDED", "Rate Limit Exceeded", "Rate Limiting"),
+            )
         except Exception:
             pass
 
@@ -130,14 +187,15 @@ def log_event(
     reason: str = "",
     action: Optional[str] = None,
     payload_snippet: str = "",
+    duration_ms: Optional[float] = None,
 ):
     if action is None:
         action = "403 Blocked" if blocked else "200 Allowed"
     with get_connection() as conn:
         conn.execute(
             """
-            INSERT INTO events (timestamp, client_ip, method, path, blocked, rule_id, reason, action, payload_snippet)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO events (timestamp, client_ip, method, path, blocked, rule_id, reason, action, payload_snippet, duration_ms)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
@@ -149,6 +207,7 @@ def log_event(
                 reason,
                 action,
                 payload_snippet,
+                duration_ms,
             ),
         )
         conn.commit()
@@ -168,6 +227,13 @@ def get_stats() -> Dict[str, Any]:
         sites = cursor.fetchone()[0]
 
         clean = max(0, total - blocked)
+
+        # Real average latency from measured requests (last 500)
+        cursor.execute(
+            "SELECT AVG(duration_ms) FROM (SELECT duration_ms FROM events WHERE duration_ms IS NOT NULL ORDER BY id DESC LIMIT 500)"
+        )
+        avg_lat_row = cursor.fetchone()
+        avg_latency = round(avg_lat_row[0], 2) if avg_lat_row and avg_lat_row[0] is not None else None
 
         # Real threat category breakdown from all blocked events
         cursor.execute("""
@@ -209,7 +275,72 @@ def get_stats() -> Dict[str, Any]:
             "clean_requests": clean,
             "protected_domains": sites,
             "threat_breakdown": threat_breakdown,
-            "latency_ms": 0.32,
+            "latency_ms": avg_latency,
+        }
+
+
+def get_control_overview_stats(time_range: str = "all") -> Dict[str, Any]:
+    """
+    Return truthful metrics for the control API /api/v1/overview endpoint.
+    All counts are derived from the SQLite events table.
+    time_range: "24h", "7d", or "all".
+    """
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        # Build time filter clause
+        time_clause = ""
+        time_params: list = []
+        if time_range == "24h":
+            time_clause = "WHERE timestamp >= datetime('now', '-1 day')"
+        elif time_range == "7d":
+            time_clause = "WHERE timestamp >= datetime('now', '-7 days')"
+        # "all" has no filter
+
+        # Total proxy-inspected HTTP requests
+        cursor.execute(f"SELECT COUNT(*) FROM events {time_clause}", time_params)
+        total_requests = cursor.fetchone()[0]
+
+        # Requests blocked by WAF or Rate Limiting
+        where_prefix = "AND" if time_clause else "WHERE"
+        cursor.execute(
+            f"SELECT COUNT(*) FROM events {time_clause} {where_prefix} blocked = 1",
+            time_params,
+        )
+        blocked_attacks = cursor.fetchone()[0]
+
+        # Requests allowed through
+        allowed_requests = max(0, total_requests - blocked_attacks)
+
+        # Detection mode events (would have blocked)
+        cursor.execute(
+            f"SELECT COUNT(*) FROM events {time_clause} {where_prefix} blocked = 0 AND action LIKE '%Detection Mode%'",
+            time_params,
+        )
+        would_block_events = cursor.fetchone()[0]
+
+        # Rate-limit events
+        cursor.execute(
+            f"SELECT COUNT(*) FROM events {time_clause} {where_prefix} (rule_id = 'RATE_LIMIT_EXCEEDED' OR action LIKE '%429%')",
+            time_params,
+        )
+        rate_limited_events = cursor.fetchone()[0]
+
+        # Real average latency from measured requests (last 500 within time range)
+        cursor.execute(
+            f"SELECT AVG(duration_ms) FROM (SELECT duration_ms FROM events {time_clause} {'AND' if time_clause else 'WHERE'} duration_ms IS NOT NULL ORDER BY id DESC LIMIT 500)",
+            time_params,
+        )
+        avg_lat_row = cursor.fetchone()
+        avg_latency_ms = round(avg_lat_row[0], 2) if avg_lat_row and avg_lat_row[0] is not None else None
+
+        return {
+            "total_requests": total_requests,
+            "blocked_attacks": blocked_attacks,
+            "allowed_requests": allowed_requests,
+            "would_block_events": would_block_events,
+            "rate_limited_events": rate_limited_events,
+            "avg_latency_ms": avg_latency_ms,
         }
 
 

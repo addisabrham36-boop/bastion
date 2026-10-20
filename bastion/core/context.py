@@ -32,6 +32,7 @@ class RequestContext:
     form_params: Dict[str, List[str]]
     json_body: Optional[Any]
     text_body: str
+    normalized: Optional[Any] = None
 
     @classmethod
     def create(
@@ -50,6 +51,7 @@ class RequestContext:
         form_params: Dict[str, List[str]],
         json_body: Optional[Any],
         text_body: str,
+        normalized: Optional[Any] = None,
     ) -> "RequestContext":
         cl = headers.get("content-length")
         declared_len = int(cl) if cl and cl.isdigit() else None
@@ -75,6 +77,7 @@ class RequestContext:
             form_params=form_params,
             json_body=json_body,
             text_body=text_body,
+            normalized=normalized,
         )
 
 
@@ -89,6 +92,7 @@ class Detection:
     message: str
     location: str
     evidence: str        # Redacted or bounded excerpt
+    proposed_action: str = "BLOCK"  # "BLOCK" | "LOG"
     version: int = 1
 
 

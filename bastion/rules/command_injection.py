@@ -15,6 +15,9 @@ def _match_helper(rule_id: str, compiled_patterns, request) -> Verdict:
         # Skip bare standalone binary matching on user-agent header (e.g. curl/8.x, python-requests)
         if field_label.startswith("header:user-agent") and rule_id in ("932100", "932120"):
             continue
+        # Skip bare standalone utility matching on multipart bodies to prevent false positives on MIME field names (e.g. name="file", Content-Type:)
+        if field_label == "body" and "multipart/" in request.headers.get("content-type", "").lower() and rule_id in ("932120", "932130"):
+            continue
         # Also test de-obfuscated value (stripping internal quotes and backslashes)
         cleaned_value = re.sub(r"['\"\\\\]", "", value)
         for pattern, reason in compiled_patterns:

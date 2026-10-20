@@ -12,7 +12,9 @@ class StatusResponse(BaseModel):
     redis_connected: bool
     rules_count: int
     sites_count: int
-    worker_queue_lag: int = 0
+    worker_queue_lag: Optional[int] = None
+    stream_length: Optional[int] = None
+    telemetry_status: str = "unknown"
 
 
 class StatsOverviewResponse(BaseModel):
@@ -21,7 +23,7 @@ class StatsOverviewResponse(BaseModel):
     allowed_requests: int
     would_block_events: int
     rate_limited_events: int
-    avg_latency_ms: float
+    avg_latency_ms: Optional[float] = None
 
 
 class RuleToggleRequest(BaseModel):

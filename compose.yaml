@@ -1,8 +1,10 @@
 services:
   bastion:
     build: .
+    command: ["python", "-m", "bastion.server"]
     restart: unless-stopped
     ports:
+      - "127.0.0.1:8080:8080"
       - "127.0.0.1:9000:9000"
     environment:
       - BASTION_ENV=production
@@ -10,18 +12,34 @@ services:
       - BASTION_LISTEN_HOST=0.0.0.0
       - BASTION_LISTEN_PORT=9000
       - REDIS_URL=redis://redis:6379/0
-      - OPENSEARCH_URL=http://opensearch:9200
+      - OPENSEARCH_URL=https://opensearch:9200
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      - OPENSEARCH_USERNAME=${OPENSEARCH_USERNAME}
+      - OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD}
       - BASTION_SITE_CONFIG=bastion/config/sites.yaml
+      - BASTION_RATE_LIMIT_ENABLED=${BASTION_RATE_LIMIT_ENABLED:-true}
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks:
       - bastion_internal
     depends_on:
       - redis
       - opensearch
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
     command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    ports:
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -33,30 +51,81 @@ services:
       retries: 5
 
   opensearch:
-    image: opensearchproject/opensearch:2.14.0
+    image: opensearchproject/opensearch:3.9.0
     restart: unless-stopped
     environment:
       - discovery.type=single-node
-      - plugins.security.disabled=true
+      # plugins.security.disabled=true  # Security enabled via plugin
       - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      - OPENSEARCH_USERNAME=${OPENSEARCH_USERNAME}
+      - OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD}
     volumes:
       - opensearch_data:/usr/share/opensearch/data
     networks:
       - bastion_internal
+    ports:
+      - "127.0.0.1:9200:9200"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      test: ["CMD-SHELL", "curl -k -f -u $${OPENSEARCH_USERNAME}:$${OPENSEARCH_PASSWORD} https://localhost:9200/_cluster/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:3.9.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5601:5601"
+    environment:
+      - OPENSEARCH_HOSTS=["https://opensearch:9200"]
+      - OPENSEARCH_USERNAME=${OPENSEARCH_DASHBOARDS_USERNAME}
+      - OPENSEARCH_PASSWORD=${OPENSEARCH_DASHBOARDS_PASSWORD}
+    networks:
+      - bastion_internal
+    depends_on:
+      - opensearch
+
+  telemetry:
+    build: .
+    command: ["python", "-m", "bastion.telemetry"]
+    restart: unless-stopped
+    environment:
+      - REDIS_URL=${REDIS_URL}
+      - OPENSEARCH_URL=${OPENSEARCH_URL}
+      - OPENSEARCH_USERNAME=${OPENSEARCH_USERNAME}
+      - OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD}
+      - OPENSEARCH_VERIFY_TLS=${OPENSEARCH_VERIFY_TLS}
+    networks:
+      - bastion_internal
+    depends_on:
+      - redis
+      - opensearch
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os, sys; sys.exit(0 if os.path.exists('/proc/1') else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
   demo-upstream:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["python", "-m", "uvicorn", "test_app:app", "--host", "0.0.0.0", "--port", "5000"]
+    command: ["python", "vulnerable_target/app.py"]
+    profiles:
+      - lab
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:5000:5000"
     networks:
       - bastion_internal
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
 networks:
   bastion_internal:

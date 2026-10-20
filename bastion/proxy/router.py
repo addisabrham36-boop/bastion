@@ -10,8 +10,9 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class RateLimitConfig(BaseModel):
-    requests: int = Field(default=60, ge=1)
-    window_seconds: int = Field(default=60, ge=1)
+    enabled: bool = True
+    requests: int = Field(default=60, ge=1, le=100_000)
+    window_seconds: int = Field(default=60, ge=1, le=86_400)
 
 
 class ScoreThresholds(BaseModel):

@@ -73,9 +73,11 @@ class TelemetryWorker:
         for msg_id, fields in messages:
             ack_ids.append(msg_id)
             try:
-                raw_payload = fields.get("payload")
+                raw_payload = fields.get("payload") or fields.get(b"payload")
                 if not raw_payload:
                     continue
+                if isinstance(raw_payload, bytes):
+                    raw_payload = raw_payload.decode("utf-8")
                 data = json.loads(raw_payload)
                 event = SecurityEvent(**data)
                 today = datetime.now(timezone.utc).strftime("%Y.%m.%d")
@@ -98,7 +100,11 @@ class TelemetryWorker:
                     for d in docs_to_index:
                         actions.append({"index": {"_index": d["_index"], "_id": d["_id"]}})
                         actions.append(d["_source"])
-                    res = await self.opensearch.bulk(body=actions)
+                    import inspect
+                    if inspect.iscoroutinefunction(self.opensearch.bulk):
+                        res = await self.opensearch.bulk(body=actions)
+                    else:
+                        res = await asyncio.to_thread(self.opensearch.bulk, body=actions)
                     self.indexed_count += len(docs_to_index)
             except Exception as e:
                 logger.error("Failed to bulk index events to OpenSearch: %s", e)

@@ -129,6 +129,9 @@ def set_toggle(key: str, is_vulnerable: bool):
 
 @app.before_request
 def route_via_waf_proxy():
+    # Allow health checks directly
+    if request.path in ("/health", "/healthz"):
+        return None
     # Allow if already proxied through Bastion WAF (Port 8080)
     if request.headers.get("X-Bastion-Proxy") == "1" or "8080" in request.headers.get("X-Forwarded-Host", ""):
         return None
@@ -493,5 +496,12 @@ def new_ticket():
     return redirect("/staff")
 
 
+@app.route("/health")
+def health():
+    return {"status": "ok", "service": "vulnerable_banking_lab"}
+
+
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    host = os.environ.get("BANK_HOST", "0.0.0.0")
+    port = int(os.environ.get("BANK_PORT", "5000"))
+    app.run(host=host, port=port, debug=False)

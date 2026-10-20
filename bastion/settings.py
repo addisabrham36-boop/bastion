@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     # Redis Backend (IOCs, Rate Limiting, Event Streams)
     redis_url: str = Field(default="redis://127.0.0.1:6379/0", alias="REDIS_URL")
     redis_event_stream: str = Field(default="bastion:events:v1", alias="REDIS_EVENT_STREAM")
+    bastion_rate_limit_enabled: bool = Field(default=True, alias="BASTION_RATE_LIMIT_ENABLED")
+    bastion_rate_limit_timeout_seconds: float = Field(default=0.1, alias="BASTION_RATE_LIMIT_TIMEOUT_SECONDS")
+    bastion_ioc_timeout_seconds: float = Field(default=0.1, alias="BASTION_IOC_TIMEOUT_SECONDS")
 
     # OpenSearch Backend (Telemetry)
     opensearch_url: str = Field(default="http://127.0.0.1:9200", alias="OPENSEARCH_URL")
