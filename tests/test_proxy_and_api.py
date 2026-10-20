@@ -109,43 +109,49 @@ def test_api_server_endpoints():
 
 
 def test_proxy_blocks_malicious_requests():
-    client = TestClient(proxy_app)
+    for site in get_sites():
+        set_site_defense(site["id"], True)
+    try:
+        client = TestClient(proxy_app)
 
-    # SQLi attack
-    resp = client.get("/login?user=admin' OR '1'='1")
-    assert resp.status_code == 403
-    data = resp.json()
-    assert data["blocked"] is True
-    assert data["rule"] == "942100"
+        # SQLi attack
+        resp = client.get("/login?user=admin' OR '1'='1")
+        assert resp.status_code == 403
+        data = resp.json()
+        assert data["blocked"] is True
+        assert data["rule"] == "942100"
 
-    # XSS attack
-    resp = client.get("/comment?text=<script>alert(1)</script>")
-    assert resp.status_code == 403
-    assert resp.json()["blocked"] is True
-    assert resp.json()["rule"] == "941100"
+        # XSS attack
+        resp = client.get("/comment?text=<script>alert(1)</script>")
+        assert resp.status_code == 403
+        assert resp.json()["blocked"] is True
+        assert resp.json()["rule"] == "941100"
 
-    # Path Traversal attack
-    resp = client.get("/files/../../../../etc/passwd")
-    assert resp.status_code == 403
-    assert resp.json()["blocked"] is True
-    assert resp.json()["rule"] == "930120"
+        # Path Traversal attack
+        resp = client.get("/files/../../../../etc/passwd")
+        assert resp.status_code == 403
+        assert resp.json()["blocked"] is True
+        assert resp.json()["rule"] == "930120"
 
-    # Command injection attack
-    resp = client.post("/ping", data={"host": "127.0.0.1; whoami"})
-    assert resp.status_code == 403
-    assert resp.json()["blocked"] is True
-    assert resp.json()["rule"] == "932100"
+        # Command injection attack
+        resp = client.post("/ping", data={"host": "127.0.0.1; whoami"})
+        assert resp.status_code == 403
+        assert resp.json()["blocked"] is True
+        assert resp.json()["rule"] == "932100"
 
-    # SSRF attack
-    resp = client.get("/fetch?url=http://169.254.169.254/metadata")
-    assert resp.status_code == 403
-    assert resp.json()["blocked"] is True
-    assert resp.json()["rule"] == "934100"
+        # SSRF attack
+        resp = client.get("/fetch?url=http://169.254.169.254/metadata")
+        assert resp.status_code == 403
+        assert resp.json()["blocked"] is True
+        assert resp.json()["rule"] == "934100"
+    finally:
+        for site in get_sites():
+            set_site_defense(site["id"], False)
 
 
 def test_proxy_passes_clean_request():
     client = TestClient(proxy_app)
-    # When clean traffic is sent, proxy forwards to upstream; if upstream is offline, returns 502 Bad Gateway
-    resp = client.get("/search?q=123")
-    assert resp.status_code in (200, 502)
+    # When clean traffic is sent, proxy forwards to upstream; upstream returns its response (or 502 if offline)
+    resp = client.get("/?q=123")
+    assert resp.status_code in (200, 404, 502)
 

@@ -1,0 +1,21 @@
+
+══════════════════════════════════════════════════════════════════════
+  🛡️   BASTION ENTERPRISE WAF — LIVE PRESENTATION LAUNCHER
+══════════════════════════════════════════════════════════════════════
+  📊  WAF SOC Dashboard:       http://127.0.0.1:8000
+  ⚡  Protected Bank Portal:   http://127.0.0.1:8080  (via WAF Proxy)
+  🔐  Staff & Security Center: http://127.0.0.1:8080/staff
+  🎯  Direct Bank Target:      http://127.0.0.1:5000  (Unprotected)
+══════════════════════════════════════════════════════════════════════
+  💡 PRESENTATION DEMO WORKFLOW:
+  1. Open Dashboard:  http://127.0.0.1:8000 to watch live attack telemetry.
+  2. Open Bank WAF:   http://127.0.0.1:8080 to test attacks (SQLi, XSS, RCE, LFI, SSRF).
+  3. Open Staff Page: http://127.0.0.1:8080/staff to toggle Vulnerability vs Remediated mode.
+  Press CTRL+C to terminate all services simultaneously.
+══════════════════════════════════════════════════════════════════════
+
+ * Serving Flask app 'vulnerable_bank_app'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+[33mPress CTRL+C to quit[0m

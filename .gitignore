@@ -14,4 +14,4 @@ database/*.db
 logs/*.log
 
 # Local config overrides
-config/config.local.json
+.env

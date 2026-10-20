@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block title %}Apex Global Bank - Client Portal & Security Test Suite{% endblock %}
+
+{% block content %}
+<!-- Account Balances Summary -->
+<div class="grid">
+    <div class="card">
+        <h3><i class="fa-solid fa-wallet" style="color: #2563eb;"></i> Primary Business Checking</h3>
+        <div class="account-no">Account: **** **** 4892</div>
+        <div class="balance">$142,580.40</div>
+        <span style="color: var(--green); font-size: 0.85rem; font-weight: 600;"><i class="fa-solid fa-arrow-up"></i> +2.4% yield this month</span>
+    </div>
+    <div class="card">
+        <h3><i class="fa-solid fa-piggy-bank" style="color: #10b981;"></i> Reserve High-Yield Savings</h3>
+        <div class="account-no">Account: **** **** 9104</div>
+        <div class="balance">$520,100.00</div>
+        <span style="color: var(--green); font-size: 0.85rem; font-weight: 600;">4.85% APY Active</span>
+    </div>
+    <div class="card">
+        <h3><i class="fa-solid fa-chart-pie" style="color: #8b5cf6;"></i> Global Investment Vault</h3>
+        <div class="account-no">Portfolio: Apex-Equities-Alpha</div>
+        <div class="balance">$350,000.00</div>
+        <span style="color: var(--muted); font-size: 0.85rem;">Managed Liquidity</span>
+    </div>
+</div>
+
+<!-- Dynamic Output Box -->
+{% if output_title %}
+<div class="card" style="margin-bottom: 25px; border-left: 4px solid var(--accent);">
+    <h3><i class="fa-solid fa-terminal"></i> {{ output_title }}</h3>
+    {% if is_safe_rendered %}
+        <div class="output-box" style="background: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1;">{{ output_content | safe }}</div>
+    {% else %}
+        <div class="output-box">{{ output_content }}</div>
+    {% endif %}
+    <div style="margin-top: 12px;"><a href="/" style="color: var(--accent); text-decoration: none; font-weight: 600;">&larr; Clear Output</a></div>
+</div>
+{% endif %}
+
+<!-- 8 Vulnerability Testing Cards Grid -->
+<h2 style="font-size: 1.25rem; margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 8px;">
+    <i class="fa-solid fa-shield-virus" style="color: #2563eb;"></i> Vulnerability Attack Modules & Live Demos
+</h2>
+
+<div class="grid">
+    <!-- 1. SQL Injection -->
+    <div class="card">
+        <h3><i class="fa-solid fa-magnifying-glass" style="color: #ef4444;"></i> 1. Transaction Search (SQLi)</h3>
+        <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 8px;">Query account ledger records by transaction query.</p>
+        <form action="/search" method="GET" id="form-sqli">
+            <input type="text" id="input-sqli" name="q" placeholder="Enter query..." value="{{ request.args.get('q', '') }}" required>
+            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                <button type="button" class="btn" style="background: #ef4444; font-size: 0.75rem; padding: 6px 10px; flex: 1;" onclick="setAndSubmit('input-sqli', 'form-sqli', &quot;admin' OR '1'='1&quot;)">
+                    <i class="fa-solid fa-bolt"></i> Attack: admin' OR '1'='1
+                </button>
+                <button type="button" class="btn btn-outline" style="font-size: 0.75rem; padding: 6px 10px; flex: 1;" onclick="setAndSubmit('input-sqli', 'form-sqli', 'ACME')">
+                    <i class="fa-solid fa-check"></i> Clean: ACME
+                </button>
+            </div>
+            <button type="submit" style="margin-top: 4px;"><i class="fa-solid fa-play"></i> Custom Search</button>
+        </form>
+    </div>
+
+    <!-- 2. Reflected XSS -->
+    <div class="card">
+        <h3><i class="fa-solid fa-comment-dots" style="color: #f59e0b;"></i> 2. Support Desk (Reflected XSS)</h3>
+        <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 8px;">Submit live support inquiry or customer message.</p>
+        <form action="/comment" method="GET" id="form-xss">
+            <input type="text" id="input-xss" name="msg" placeholder="Enter message..." value="{{ request.args.get('msg', '') }}" required>
+            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                <button type="button" class="btn" style="background: #ef4444; font-size: 0.75rem; padding: 6px 10px; flex: 1;" onclick="setAndSubmit('input-xss', 'form-xss', '<script>alert(\'XSS\')</script>')">
+                    <i class="fa-solid fa-bolt"></i> Attack: &lt;script&gt;
+                </button>
+                <button type="button" class="btn btn-outline" style="font-size: 0.75rem; padding: 6px 10px; flex: 1;" onclick="setAndSubmit('input-xss', 'form-xss', 'Please review my wire transfer fee.')">
+                    <i class="fa-solid fa-check"></i> Clean Inquiry
+                </button>
+            </div>
+            <button type="submit" style="margin-top: 4px;"><i class="fa-solid fa-paper-plane"></i> Submit</button>
+        </form>
+    </div>
+
+    <!-- 3. Remote Code Execution -->
+    <div class="card">
+        <h3><i class="fa-solid fa-server" style="color: #8b5cf6;"></i> 3. Host Diagnostic (RCE)</h3>
+        <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 8px;">Server health ping, status, and network inspection.</p>
+        <form action="/exec" method="GET" id="form-rce">
+            <input type="text" id="input-rce" name="cmd" placeholder="Enter diagnostic command..." value="{{ request.args.get('cmd', '') }}" required>
+            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                <button type="button" class="btn" style="background: #ef4444; font-size: 0.75rem; padding: 6px 10px; flex: 1;" onclick="setAndSubmit('input-rce', 'form-rce', 'whoami')">
+                    <i class="fa-solid fa-bolt"></i> Attack: whoami
+                </button>
+                <button type="button" class="btn" style="background: #dc2626; font-size: 0.75rem; padding: 6px 10px; flex: 1;" onclick="setAndSubmit('input-rce', 'form-rce', '127.0.0.1; id')">
+                    <i class="fa-solid fa-bolt"></i> Attack: 127.0.0.1; id
+                </button>
+            </div>
+            <button type="submit" style="margin-top: 4px;"><i class="fa-solid fa-terminal"></i> Run Diagnostic</button>
+        </form>
+    </div>
+
+    <!-- 4. Path Traversal / LFI -->
+    <div class="card">
+        <h3><i class="fa-solid fa-file-invoice" style="color: #3b82f6;"></i> 4. Statement Reader (LFI)</h3>
+        <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 8px;">Fetch monthly PDF bank statements and audit logs.</p>
+        <form action="/file" method="GET" id="form-lfi">
+            <input type="text" id="input-lfi" name="name" placeholder="Enter filename..." value="{{ request.args.get('name', '') }}" required>
+            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                <button type="button" class="btn" style="background: #ef4444; font-size: 0.75rem; padding: 6px 10px; flex: 1;" onclick="setAndSubmit('input-lfi', 'form-lfi', '../../../../etc/passwd')">
+                    <i class="fa-solid fa-bolt"></i> Attack: ../etc/passwd
+                </button>
+                <button type="button" class="btn btn-outline" style="font-size: 0.75rem; padding: 6px 10px; flex: 1;" onclick="setAndSubmit('input-lfi', 'form-lfi', 'september_2026.pdf')">
+                    <i class="fa-solid fa-check"></i> Clean Statement
+                </button>
+            </div>
+            <button type="submit" style="margin-top: 4px;"><i class="fa-solid fa-download"></i> Fetch Document</button>
+        </form>
+    </div>
+
+    <!-- 5. SSRF -->
+    <div class="card">
+        <h3><i class="fa-solid fa-satellite-dish" style="color: #ec4899;"></i> 5. FX Rate Webhook (SSRF)</h3>
+        <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 8px;">Fetch external exchange rates or cloud metadata.</p>
+        <form action="/webhook" method="GET" id="form-ssrf">
+            <input type="text" id="input-ssrf" name="url" placeholder="Enter webhook URL..." value="{{ request.args.get('url', '') }}" required>
+            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                <button type="button" class="btn" style="background: #ef4444; font-size: 0.75rem; padding: 6px 10px; flex: 1;" onclick="setAndSubmit('input-ssrf', 'form-ssrf', 'http://169.254.169.254/latest/meta-data/')">
+                    <i class="fa-solid fa-bolt"></i> Attack: Cloud Metadata
+                </button>
+                <button type="button" class="btn btn-outline" style="font-size: 0.75rem; padding: 6px 10px; flex: 1;" onclick="setAndSubmit('input-ssrf', 'form-ssrf', 'https://api.frankfurter.app/latest?from=USD&to=EUR')">
+                    <i class="fa-solid fa-check"></i> Clean FX API
+                </button>
+            </div>
+            <button type="submit" style="margin-top: 4px;"><i class="fa-solid fa-globe"></i> Query Webhook</button>
+        </form>
+    </div>
+
+    <!-- 6. IDOR -->
+    <div class="card">
+        <h3><i class="fa-solid fa-id-card-clip" style="color: #10b981;"></i> 6. Account Ledger (IDOR)</h3>
+        <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 8px;">View customer balance ledger by Account ID.</p>
+        <form action="/account/view" method="GET">
+            <input type="number" name="id" placeholder="Account ID: 1 (You) or 3 (Hamilton - $12.5M)" value="{{ request.args.get('id', '1') }}" required>
+            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                <button type="submit" name="id" value="3" class="btn" style="background: #ef4444; font-size: 0.75rem; padding: 6px 10px; flex: 1;">
+                    <i class="fa-solid fa-bolt"></i> IDOR: View VIP (#3)
+                </button>
+                <button type="submit" name="id" value="1" class="btn btn-outline" style="font-size: 0.75rem; padding: 6px 10px; flex: 1;">
+                    <i class="fa-solid fa-check"></i> Own Account (#1)
+                </button>
+            </div>
+            <button type="submit" style="margin-top: 4px;"><i class="fa-solid fa-eye"></i> View Record</button>
+        </form>
+    </div>
+
+    <!-- 7. CSRF Fund Transfer -->
+    <div class="card">
+        <h3><i class="fa-solid fa-money-bill-transfer" style="color: #06b6d4;"></i> 7. Wire Fund Transfer (CSRF)</h3>
+        <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 8px;">Initiate funds transfer to destination account.</p>
+        <form action="/transfer" method="GET">
+            <input type="text" name="to_account" placeholder="Destination (e.g. 7721-3940-1029)" value="7721-3940-1029" required>
+            <input type="number" name="amount" placeholder="Amount ($)" value="5000" required>
+            <button type="submit" style="margin-top: 4px;"><i class="fa-solid fa-paper-plane"></i> Execute Transfer</button>
+        </form>
+    </div>
+
+    <!-- 8. SSTI Receipt Generator -->
+    <div class="card">
+        <h3><i class="fa-solid fa-receipt" style="color: #f59e0b;"></i> 8. Receipt Generator (SSTI)</h3>
+        <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 8px;">Generate custom branded PDF customer receipt.</p>
+        <form action="/receipt" method="GET" id="form-ssti">
+            <input type="text" id="input-ssti" name="name" placeholder="Enter receipt name..." required>
+            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                <button type="button" class="btn" style="background: #ef4444; font-size: 0.75rem; padding: 6px 10px; flex: 1;" onclick="setAndSubmit('input-ssti', 'form-ssti', '{{ 7*7 }}')">
+                    <i class="fa-solid fa-bolt"></i> Attack: {{ 7*7 }}
+                </button>
+                <button type="button" class="btn btn-outline" style="font-size: 0.75rem; padding: 6px 10px; flex: 1;" onclick="setAndSubmit('input-ssti', 'form-ssti', 'John Doe')">
+                    <i class="fa-solid fa-check"></i> Clean Name
+                </button>
+            </div>
+            <button type="submit" style="margin-top: 4px;"><i class="fa-solid fa-print"></i> Generate Receipt</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function setAndSubmit(inputId, formId, val) {
+    const input = document.getElementById(inputId);
+    const form = document.getElementById(formId);
+    if (input && form) {
+        input.value = val;
+        form.submit();
+    }
+}
+</script>
+{% endblock %}
